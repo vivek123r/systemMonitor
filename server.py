@@ -2,7 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict
-from mangum import Mangum
 
 app = FastAPI()
 
@@ -49,5 +48,6 @@ def update_stats(stats: SystemStats):
 def get_stats():
     return current_stats
 
-# Vercel serverless function handler
-handler = Mangum(app)
+@app.get("/")
+def root():
+    return {"message": "System Monitor API", "status": "running"}
