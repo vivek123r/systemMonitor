@@ -1,8 +1,18 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict
 
 app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # --- DATA MODEL ---
 # This ensures the API only accepts valid data
@@ -43,3 +53,6 @@ def get_stats():
     return current_stats
 
 # Run with: uvicorn server:app --host 0.0.0.0 --port 8000
+
+# Vercel serverless function handler
+handler = app
