@@ -130,6 +130,25 @@ def start_agent():
             uptime_seconds = time.time() - boot_time
             uptime_hours = round(uptime_seconds / 3600, 1)
             
+            # Get CPU model name
+            cpu_model = platform.processor()
+            if not cpu_model or cpu_model.strip() == "":
+                # Fallback: try to get from cpuinfo on Windows
+                try:
+                    import subprocess
+                    result = subprocess.run(['wmic', 'cpu', 'get', 'name'], 
+                                          capture_output=True, text=True, timeout=2)
+                    lines = result.stdout.strip().split('\n')
+                    if len(lines) > 1:
+                        cpu_model = lines[1].strip()
+                except:
+                    cpu_model = f"{platform.machine()} Processor"
+            
+            # Get GPU model name
+            gpu_model = "No GPU detected"
+            if gpu_details:
+                gpu_model = gpu_details[0]["name"]
+            
             system_details = {
                 "os_name": platform.system(),  # PRIMARY
                 "os_version": platform.version(),
@@ -137,6 +156,8 @@ def start_agent():
                 "hostname": platform.node(),
                 "architecture": platform.machine(),
                 "processor": platform.processor(),
+                "cpu_model": cpu_model,  # PRIMARY - CPU Model Name
+                "gpu_model": gpu_model,  # PRIMARY - GPU Model Name
                 "python_version": platform.python_version(),
                 "uptime_hours": uptime_hours,
                 "uptime_seconds": round(uptime_seconds),

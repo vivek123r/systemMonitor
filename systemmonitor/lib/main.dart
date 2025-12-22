@@ -205,11 +205,93 @@ class _SystemMonitorPageState extends State<SystemMonitorPage> {
               ],
             ),
             const Divider(height: 24),
+
+            // Highlight CPU Model
+            if (system['cpu_model'] != null) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.blue[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.memory, color: Colors.blue, size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'CPU',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            system['cpu_model'],
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            // Highlight GPU Model
+            if (system['gpu_model'] != null &&
+                system['gpu_model'] != 'No GPU detected') ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.orange[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.videocam, color: Colors.orange, size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'GPU',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            system['gpu_model'],
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            const Divider(height: 12),
             _buildInfoRow('Operating System', system['os_name'] ?? 'Unknown'),
             _buildInfoRow('Version', system['os_version'] ?? 'Unknown'),
             _buildInfoRow('Hostname', system['hostname'] ?? 'Unknown'),
             _buildInfoRow('Architecture', system['architecture'] ?? 'Unknown'),
-            _buildInfoRow('Processor', system['processor'] ?? 'Unknown'),
             _buildInfoRow('Uptime', '${system['uptime_hours']} hours'),
             _buildInfoRow('Boot Time', system['boot_time'] ?? 'Unknown'),
           ],
