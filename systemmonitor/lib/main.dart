@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
+import 'remote_control_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -47,6 +48,14 @@ class _SystemMonitorPageState extends State<SystemMonitorPage> {
   bool _isLoading = true;
   String? _error;
   DateTime? _lastUpdate;
+
+  // Expansion states for collapsible sections
+  bool _cpuDetailsExpanded = false;
+  bool _ramDetailsExpanded = false;
+  bool _gpuDetailsExpanded = false;
+  bool _diskDetailsExpanded = false;
+  bool _networkDetailsExpanded = false;
+  bool _processesExpanded = false;
 
   @override
   void initState() {
@@ -95,6 +104,18 @@ class _SystemMonitorPageState extends State<SystemMonitorPage> {
         title: const Text('System Monitor'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_remote),
+            tooltip: 'Remote Control',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const RemoteControlPage(),
+                ),
+              );
+            },
+          ),
           if (_lastUpdate != null)
             Padding(
               padding: const EdgeInsets.all(16.0),
@@ -143,24 +164,45 @@ class _SystemMonitorPageState extends State<SystemMonitorPage> {
                     stats['cpu'],
                     Icons.memory,
                     Colors.blue,
+                    onTap: stats['cpu_details'] != null
+                        ? () => setState(
+                            () => _cpuDetailsExpanded = !_cpuDetailsExpanded,
+                          )
+                        : null,
+                    isExpanded: _cpuDetailsExpanded,
                   ),
-                  if (stats['cpu_details'] != null) _buildCPUDetails(),
+                  if (stats['cpu_details'] != null && _cpuDetailsExpanded)
+                    _buildCPUDetails(),
                   const SizedBox(height: 16),
                   _buildStatCard(
                     'RAM Usage',
                     stats['ram'],
                     Icons.storage,
                     Colors.green,
+                    onTap: stats['ram_details'] != null
+                        ? () => setState(
+                            () => _ramDetailsExpanded = !_ramDetailsExpanded,
+                          )
+                        : null,
+                    isExpanded: _ramDetailsExpanded,
                   ),
-                  if (stats['ram_details'] != null) _buildRAMDetails(),
+                  if (stats['ram_details'] != null && _ramDetailsExpanded)
+                    _buildRAMDetails(),
                   const SizedBox(height: 16),
                   _buildStatCard(
                     'GPU Usage',
                     stats['gpu'],
                     Icons.videocam,
                     Colors.orange,
+                    onTap: stats['gpu_details'] != null
+                        ? () => setState(
+                            () => _gpuDetailsExpanded = !_gpuDetailsExpanded,
+                          )
+                        : null,
+                    isExpanded: _gpuDetailsExpanded,
                   ),
-                  if (stats['gpu_details'] != null) _buildGPUDetails(),
+                  if (stats['gpu_details'] != null && _gpuDetailsExpanded)
+                    _buildGPUDetails(),
                   const SizedBox(height: 16),
                   _buildDiskCards(),
                   if (stats['network'] != null) ...[
@@ -432,43 +474,59 @@ class _SystemMonitorPageState extends State<SystemMonitorPage> {
     String title,
     dynamic value,
     IconData icon,
-    Color color,
-  ) {
+    Color color, {
+    VoidCallback? onTap,
+    bool isExpanded = false,
+  }) {
     final percentage = value is num ? value.toDouble() : 0.0;
 
     return Card(
       elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: color, size: 28),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, color: color, size: 28),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
+                  if (onTap != null)
+                    Icon(
+                      isExpanded ? Icons.expand_less : Icons.expand_more,
+                      color: Colors.grey,
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              LinearProgressIndicator(
+                value: percentage / 100,
+                backgroundColor: Colors.grey[300],
+                color: color,
+                minHeight: 24,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${percentage.toStringAsFixed(1)}%',
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            LinearProgressIndicator(
-              value: percentage / 100,
-              backgroundColor: Colors.grey[300],
-              color: color,
-              minHeight: 24,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${percentage.toStringAsFixed(1)}%',
-              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -635,59 +693,77 @@ class _SystemMonitorPageState extends State<SystemMonitorPage> {
         ),
         ...diskDetails.entries.map((entry) {
           final details = entry.value as Map<String, dynamic>;
+          final diskIndex = diskDetails.keys.toList().indexOf(entry.key);
+          final isExpanded = _diskDetailsExpanded;
+
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Card(
               elevation: 4,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.sd_storage,
-                          color: Colors.purple,
-                          size: 28,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Drive ${entry.key}:',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+              child: InkWell(
+                onTap: () => setState(
+                  () => _diskDetailsExpanded = !_diskDetailsExpanded,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.sd_storage,
+                            color: Colors.purple,
+                            size: 28,
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    LinearProgressIndicator(
-                      value: details['usage_percent'] / 100,
-                      backgroundColor: Colors.grey[300],
-                      color: Colors.purple,
-                      minHeight: 24,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${details['usage_percent']}%',
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Drive ${entry.key}:',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          Icon(
+                            isExpanded ? Icons.expand_less : Icons.expand_more,
+                            color: Colors.grey,
+                          ),
+                        ],
                       ),
-                    ),
-                    const Divider(height: 24),
-                    _buildInfoRow('Total', '${details['total_gb']} GB'),
-                    _buildInfoRow('Used', '${details['used_gb']} GB'),
-                    _buildInfoRow('Free', '${details['free_gb']} GB'),
-                    _buildInfoRow('Filesystem', details['filesystem']),
-                  ],
+                      const SizedBox(height: 16),
+                      LinearProgressIndicator(
+                        value: details['usage_percent'] / 100,
+                        backgroundColor: Colors.grey[300],
+                        color: Colors.purple,
+                        minHeight: 24,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${details['usage_percent']}%',
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (isExpanded) ...[
+                        const Divider(height: 24),
+                        _buildInfoRow('Total', '${details['total_gb']} GB'),
+                        _buildInfoRow('Used', '${details['used_gb']} GB'),
+                        _buildInfoRow('Free', '${details['free_gb']} GB'),
+                        _buildInfoRow('Filesystem', details['filesystem']),
+                      ],
+                    ],
+                  ),
                 ),
               ),
             ),
           );
         }).toList(),
-        if (stats['disk_io'] != null) _buildDiskIOCard(),
+        if (stats['disk_io'] != null && _diskDetailsExpanded)
+          _buildDiskIOCard(),
       ],
     );
   }
@@ -731,75 +807,93 @@ class _SystemMonitorPageState extends State<SystemMonitorPage> {
 
     return Card(
       elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.network_check, color: Colors.teal, size: 28),
-                const SizedBox(width: 8),
-                const Text(
-                  'Network Statistics',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const Divider(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                Column(
-                  children: [
-                    const Icon(
-                      Icons.arrow_downward,
-                      color: Colors.green,
-                      size: 32,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${network['bytes_recv_mb']} MB',
-                      style: const TextStyle(
-                        fontSize: 20,
+      child: InkWell(
+        onTap: () =>
+            setState(() => _networkDetailsExpanded = !_networkDetailsExpanded),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.network_check, color: Colors.teal, size: 28),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Network Statistics',
+                      style: TextStyle(
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    Text(
-                      '${network['packets_recv']} packets',
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                  ],
-                ),
-                Column(
-                  children: [
-                    const Icon(
-                      Icons.arrow_upward,
-                      color: Colors.orange,
-                      size: 32,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${network['bytes_sent_mb']} MB',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                  ),
+                  Icon(
+                    _networkDetailsExpanded
+                        ? Icons.expand_less
+                        : Icons.expand_more,
+                    color: Colors.grey,
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Column(
+                    children: [
+                      const Icon(
+                        Icons.arrow_downward,
+                        color: Colors.green,
+                        size: 32,
                       ),
-                    ),
-                    Text(
-                      '${network['packets_sent']} packets',
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                  ],
-                ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${network['bytes_recv_mb']} MB',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${network['packets_recv']} packets',
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      const Icon(
+                        Icons.arrow_upward,
+                        color: Colors.orange,
+                        size: 32,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${network['bytes_sent_mb']} MB',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${network['packets_sent']} packets',
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              if (_networkDetailsExpanded) ...[
+                const Divider(height: 24),
+                _buildInfoRow('Errors In', '${network['errors_in']}'),
+                _buildInfoRow('Errors Out', '${network['errors_out']}'),
+                _buildInfoRow('Dropped In', '${network['drop_in']}'),
+                _buildInfoRow('Dropped Out', '${network['drop_out']}'),
               ],
-            ),
-            const Divider(height: 24),
-            _buildInfoRow('Errors In', '${network['errors_in']}'),
-            _buildInfoRow('Errors Out', '${network['errors_out']}'),
-            _buildInfoRow('Dropped In', '${network['drop_in']}'),
-            _buildInfoRow('Dropped Out', '${network['drop_out']}'),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -814,59 +908,73 @@ class _SystemMonitorPageState extends State<SystemMonitorPage> {
 
     return Card(
       elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.apps, color: Colors.deepOrange, size: 28),
-                const SizedBox(width: 8),
-                Text(
-                  'Top Processes (${processes['total_processes']} total)',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+      child: InkWell(
+        onTap: () => setState(() => _processesExpanded = !_processesExpanded),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.apps, color: Colors.deepOrange, size: 28),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Top Processes (${processes['total_processes']} total)',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                ),
+                  Icon(
+                    _processesExpanded ? Icons.expand_less : Icons.expand_more,
+                    color: Colors.grey,
+                  ),
+                ],
+              ),
+              if (_processesExpanded) ...[
+                const Divider(height: 24),
+                if (topCPU != null) ...[
+                  const Text(
+                    'Top CPU Usage:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  ...topCPU.take(5).map((proc) {
+                    return ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.memory, size: 20),
+                      title: Text(proc['name'] ?? 'Unknown'),
+                      trailing: Text(
+                        '${proc['cpu_percent']?.toStringAsFixed(1)}%',
+                      ),
+                    );
+                  }).toList(),
+                ],
+                const Divider(height: 24),
+                if (topMemory != null) ...[
+                  const Text(
+                    'Top Memory Usage:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  ...topMemory.take(5).map((proc) {
+                    return ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.storage, size: 20),
+                      title: Text(proc['name'] ?? 'Unknown'),
+                      trailing: Text(
+                        '${proc['memory_percent']?.toStringAsFixed(1)}%',
+                      ),
+                    );
+                  }).toList(),
+                ],
               ],
-            ),
-            const Divider(height: 24),
-            if (topCPU != null) ...[
-              const Text(
-                'Top CPU Usage:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              ...topCPU.take(5).map((proc) {
-                return ListTile(
-                  dense: true,
-                  leading: const Icon(Icons.memory, size: 20),
-                  title: Text(proc['name'] ?? 'Unknown'),
-                  trailing: Text('${proc['cpu_percent']?.toStringAsFixed(1)}%'),
-                );
-              }).toList(),
             ],
-            const Divider(height: 24),
-            if (topMemory != null) ...[
-              const Text(
-                'Top Memory Usage:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              ...topMemory.take(5).map((proc) {
-                return ListTile(
-                  dense: true,
-                  leading: const Icon(Icons.storage, size: 20),
-                  title: Text(proc['name'] ?? 'Unknown'),
-                  trailing: Text(
-                    '${proc['memory_percent']?.toStringAsFixed(1)}%',
-                  ),
-                );
-              }).toList(),
-            ],
-          ],
+          ),
         ),
       ),
     );

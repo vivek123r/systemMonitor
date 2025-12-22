@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, List, Optional, Any
+import time
 
 app = FastAPI()
 
@@ -30,6 +31,10 @@ class SystemStats(BaseModel):
     system: Optional[Dict[str, Any]] = None
     processes: Optional[Dict[str, Any]] = None
 
+class RemoteCommand(BaseModel):
+    command: str
+    params: Optional[Dict[str, Any]] = None
+
 # In-memory storage (The "Mailbox")
 current_stats = {
     "cpu": 0,
@@ -38,6 +43,9 @@ current_stats = {
     "disk": {},
     "status": "Waiting for Agent..."
 }
+
+# Command queue for remote control
+command_queue = []
 
 # --- ENDPOINT 1: RECEIVE DATA (POST) ---
 @app.post("/api/update")
@@ -75,3 +83,38 @@ def get_stats():
 @app.get("/")
 def root():
     return {"message": "System Monitor API", "status": "running"}
+
+# --- ENDPOINT 3: SEND REMOTE COMMAND (POST) ---
+@app.post("/api/command")
+def send_command(command: RemoteCommand):
+    global command_queue
+    command_data = {
+        "id": int(time.time() * 1000),  # Unique ID
+        "command": command.command,
+        "params": command.params or {},
+        "timestamp": time.time(),
+        "status": "pending"
+    }
+    command_queue.append(command_data)
+    print(f"[API] Command received: {command.command}")
+    return {"message": "Command queued successfully", "command_id": command_data["id"]}
+
+# --- ENDPOINT 4: GET PENDING COMMANDS (GET) ---
+@app.get("/api/commands")
+def get_commands():
+    global command_queue
+    # Return pending commands and clear the queue
+    pending = [cmd for cmd in command_queue if cmd["status"] == "pending"]
+    # Mark as sent
+    for cmd in command_queue:
+        if cmd["status"] == "pending":
+            cmd["status"] = "sent"
+    return {"commands": pending}
+
+# --- ENDPOINT 5: ACKNOWLEDGE COMMAND EXECUTION (POST) ---
+@app.post("/api/command/ack/{command_id}")
+def acknowledge_command(command_id: int, success: bool = True):
+    global command_queue
+    command_queue = [cmd for cmd in command_queue if cmd["id"] != command_id]
+    print(f"[API] Command {command_id} acknowledged: {'Success' if success else 'Failed'}")
+    return {"message": "Command acknowledged"}

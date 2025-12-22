@@ -3,9 +3,124 @@ import requests
 import time
 import GPUtil
 import platform
+import subprocess
+import os
 
 # ADDRESS of the machine running server.py
 API_URL = "https://system-monitor-silk.vercel.app/api/update"
+COMMAND_URL = "https://system-monitor-silk.vercel.app/api/commands"
+ACK_URL = "https://system-monitor-silk.vercel.app/api/command/ack"
+
+def execute_command(command, params):
+    """Execute remote commands received from server"""
+    try:
+        cmd_type = command.lower()
+        
+        # Power commands
+        if cmd_type == "shutdown":
+            print("⚠️ Executing SHUTDOWN...")
+            os.system("shutdown /s /t 5")
+            return True
+            
+        elif cmd_type == "restart":
+            print("⚠️ Executing RESTART...")
+            os.system("shutdown /r /t 5")
+            return True
+            
+        elif cmd_type == "sleep":
+            print("💤 Executing SLEEP...")
+            os.system("rundll32.exe powrprof.dll,SetSuspendState 0,1,0")
+            return True
+            
+        elif cmd_type == "logoff":
+            print("👋 Executing LOGOFF...")
+            os.system("shutdown /l")
+            return True
+            
+        # Power profile commands
+        elif cmd_type == "power_high":
+            print("⚡ Setting power profile: High Performance")
+            subprocess.run(["powercfg", "/setactive", "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"])
+            return True
+            
+        elif cmd_type == "power_balanced":
+            print("⚖️ Setting power profile: Balanced")
+            subprocess.run(["powercfg", "/setactive", "381b4222-f694-41f0-9685-ff5bb260df2e"])
+            return True
+            
+        elif cmd_type == "power_saver":
+            print("🔋 Setting power profile: Power Saver")
+            subprocess.run(["powercfg", "/setactive", "a1841308-3541-4fab-bc81-f71556f20b4a"])
+            return True
+            
+        # Brightness control
+        elif cmd_type == "brightness":
+            brightness = params.get("value", 50)
+            print(f"💡 Setting brightness to {brightness}%")
+            try:
+                import screen_brightness_control as sbc
+                sbc.set_brightness(brightness)
+                return True
+            except:
+                print("⚠️ screen_brightness_control not installed. Install: pip install screen-brightness-control")
+                return False
+                
+        # Application control
+        elif cmd_type == "open_app":
+            app = params.get("app", "")
+            print(f"📂 Opening application: {app}")
+            subprocess.Popen([app])
+            return True
+            
+        elif cmd_type == "close_app":
+            app = params.get("app", "")
+            print(f"❌ Closing application: {app}")
+            os.system(f"taskkill /IM {app} /F")
+            return True
+            
+        # Screenshot
+        elif cmd_type == "screenshot":
+            print("📸 Taking screenshot...")
+            try:
+                from PIL import ImageGrab
+                screenshot = ImageGrab.grab()
+                filename = f"screenshot_{int(time.time())}.png"
+                screenshot.save(filename)
+                print(f"✅ Screenshot saved: {filename}")
+                return True
+            except:
+                print("⚠️ PIL not installed. Install: pip install pillow")
+                return False
+        
+        else:
+            print(f"❌ Unknown command: {command}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error executing command: {e}")
+        return False
+
+def check_for_commands():
+    """Check server for pending remote commands"""
+    try:
+        response = requests.get(COMMAND_URL, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            commands = data.get("commands", [])
+            
+            for cmd in commands:
+                cmd_id = cmd["id"]
+                command = cmd["command"]
+                params = cmd.get("params", {})
+                
+                print(f"\n🎮 Remote command received: {command}")
+                success = execute_command(command, params)
+                
+                # Acknowledge command execution
+                requests.post(f"{ACK_URL}/{cmd_id}", params={"success": success}, timeout=5)
+                
+    except Exception as e:
+        pass  # Silently fail if server is unreachable
 
 def start_agent():
     print(f"Agent started. Sending to {API_URL}...")
@@ -130,19 +245,39 @@ def start_agent():
             uptime_seconds = time.time() - boot_time
             uptime_hours = round(uptime_seconds / 3600, 1)
             
-            # Get CPU model name
-            cpu_model = platform.processor()
-            if not cpu_model or cpu_model.strip() == "":
-                # Fallback: try to get from cpuinfo on Windows
+            # Get CPU model name (proper marketing name)
+            cpu_model = None
+            
+            # Method 1: Try Windows Registry (most reliable)
+            if platform.system() == "Windows":
+                try:
+                    import winreg
+                    key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, 
+                                        r"HARDWARE\DESCRIPTION\System\CentralProcessor\0")
+                    cpu_model = winreg.QueryValueEx(key, "ProcessorNameString")[0].strip()
+                    winreg.CloseKey(key)
+                except:
+                    pass
+            
+            # Method 2: Try WMIC if registry failed
+            if not cpu_model:
                 try:
                     import subprocess
                     result = subprocess.run(['wmic', 'cpu', 'get', 'name'], 
-                                          capture_output=True, text=True, timeout=2)
+                                          capture_output=True, text=True, timeout=2, shell=True)
                     lines = result.stdout.strip().split('\n')
                     if len(lines) > 1:
                         cpu_model = lines[1].strip()
                 except:
-                    cpu_model = f"{platform.machine()} Processor"
+                    pass
+            
+            # Method 3: Fallback to platform.processor()
+            if not cpu_model or "Family" in str(cpu_model) or "Model" in str(cpu_model):
+                cpu_model = platform.processor()
+            
+            # Final fallback
+            if not cpu_model or cpu_model.strip() == "":
+                cpu_model = f"{platform.machine()} Processor"
             
             # Get GPU model name
             gpu_model = "No GPU detected"
@@ -227,6 +362,9 @@ def start_agent():
                     print(f"  Drive {drive}: {details['usage_percent']}% ({details['used_gb']}/{details['total_gb']} GB)")
             else:
                 print(f"✗ Server Error: {response.status_code}")
+                
+            # Check for remote commands
+            check_for_commands()
 
         except requests.exceptions.ConnectionError:
             print("✗ Cannot connect to API. Check internet connection.")
