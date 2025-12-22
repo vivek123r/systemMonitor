@@ -2,9 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict
+from mangum import Mangum
 
 app = FastAPI()
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -15,7 +15,6 @@ app.add_middleware(
 )
 
 # --- DATA MODEL ---
-# This ensures the API only accepts valid data
 class SystemStats(BaseModel):
     cpu: float
     ram: float
@@ -32,7 +31,6 @@ current_stats = {
 }
 
 # --- ENDPOINT 1: RECEIVE DATA (POST) ---
-# The Agent (PC) calls this to drop off data
 @app.post("/api/update")
 def update_stats(stats: SystemStats):
     global current_stats
@@ -40,19 +38,16 @@ def update_stats(stats: SystemStats):
         "cpu": stats.cpu,
         "ram": stats.ram,
         "gpu": stats.gpu,
-        "disk":stats.disk,
+        "disk": stats.disk,
         "status": "Online"
     }
-    print(f"[API] Received Update -> CPU: {stats.cpu}% | RAM: {stats.ram}% | gpu: {stats.gpu}% | Disk: {stats.disk}")
+    print(f"[API] Received Update -> CPU: {stats.cpu}% | RAM: {stats.ram}% | GPU: {stats.gpu}% | Disk: {stats.disk}")
     return {"message": "Data received successfully"}
 
 # --- ENDPOINT 2: SEND DATA (GET) ---
-# The Flutter App calls this to pick up data
 @app.get("/api/status")
 def get_stats():
     return current_stats
 
-# Run with: uvicorn server:app --host 0.0.0.0 --port 8000
-
 # Vercel serverless function handler
-handler = app
+handler = Mangum(app)
