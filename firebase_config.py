@@ -21,15 +21,29 @@ def initialize_firebase():
     except ValueError:
         # Not initialized, so initialize it
         try:
+            # Try to load from environment variable first (for Vercel deployment)
+            firebase_cred_json = os.getenv('FIREBASE_SERVICE_ACCOUNT')
+            
+            if firebase_cred_json:
+                # Running on Vercel with environment variable
+                import json
+                cred_dict = json.loads(firebase_cred_json)
+                cred = credentials.Certificate(cred_dict)
+                firebase_admin.initialize_app(cred)
+                print("✅ Firebase initialized from environment variable")
+                return True
+            
+            # Fall back to local file
             cred_path = os.path.join(os.path.dirname(__file__), 'firebase-service-account.json')
             if not os.path.exists(cred_path):
                 print("⚠️ WARNING: firebase-service-account.json not found!")
                 print("Please download from Firebase Console > Project Settings > Service Accounts")
+                print("Or set FIREBASE_SERVICE_ACCOUNT environment variable")
                 return False
             
             cred = credentials.Certificate(cred_path)
             firebase_admin.initialize_app(cred)
-            print("✅ Firebase initialized successfully")
+            print("✅ Firebase initialized from file")
             return True
         except Exception as e:
             print(f"❌ Failed to initialize Firebase: {e}")
