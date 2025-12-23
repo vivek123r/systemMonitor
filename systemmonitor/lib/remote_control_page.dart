@@ -47,21 +47,33 @@ class _RemoteControlPageState extends State<RemoteControlPage> {
 
     try {
       final headers = await _getAuthHeaders();
+      print('Loading devices from: $baseUrl/devices');
       final response = await http.get(
         Uri.parse('$baseUrl/devices'),
         headers: headers,
       );
 
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
           _devices = List<Map<String, dynamic>>.from(data['devices'] ?? []);
+          print('Loaded ${_devices.length} devices');
           if (_devices.isNotEmpty && _selectedDeviceId == null) {
             _selectedDeviceId = _devices[0]['device_id'];
           }
         });
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: ${response.statusCode} - ${response.body}')),
+          );
+        }
       }
     } catch (e) {
+      print('Error loading devices: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
