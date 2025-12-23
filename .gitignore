@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Firebase credentials (NEVER COMMIT!)
+firebase-credentials.json
+*.json.secret
+
+# Environment variables
+.env
+.env.local
+
+# Screenshots captured by agent
+screenshot_*.png
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.iml
