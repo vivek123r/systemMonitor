@@ -61,7 +61,7 @@ class MyApp extends StatelessWidget {
           }
 
           if (snapshot.hasData) {
-            return const RemoteControlPage();
+            return const SystemMonitorPage();
           }
 
           return const LoginPage();
@@ -79,8 +79,7 @@ class SystemMonitorPage extends StatefulWidget {
 }
 
 class _SystemMonitorPageState extends State<SystemMonitorPage> {
-  static const String apiUrl =
-      'https://system-monitor-silk.vercel.app/api/status';
+  static const String baseUrl = 'https://system-monitor-silk.vercel.app/api';
 
   Map<String, dynamic> stats = {
     'cpu': 0.0,
@@ -94,6 +93,8 @@ class _SystemMonitorPageState extends State<SystemMonitorPage> {
   bool _isLoading = true;
   String? _error;
   DateTime? _lastUpdate;
+  String? _selectedDeviceId;
+  List<Map<String, dynamic>> _devices = [];
 
   // Expansion states for collapsible sections
   bool _cpuDetailsExpanded = false;
@@ -106,7 +107,7 @@ class _SystemMonitorPageState extends State<SystemMonitorPage> {
   @override
   void initState() {
     super.initState();
-    fetchStats();
+    _loadDevices();
     _timer = Timer.periodic(const Duration(seconds: 2), (timer) {
       fetchStats();
     });
@@ -118,9 +119,51 @@ class _SystemMonitorPageState extends State<SystemMonitorPage> {
     super.dispose();
   }
 
-  Future<void> fetchStats() async {
+  Future<Map<String, String>> _getAuthHeaders() async {
+    final user = FirebaseAuth.instance.currentUser;
+    final token = await user?.getIdToken();
+    final userId = user?.uid;
+
+    return {
+      'Content-Type': 'application/json',
+      'X-User-ID': userId ?? '',
+      'X-Device-ID': _selectedDeviceId ?? 'unknown',
+      'Authorization': 'Bearer ${token ?? ''}',
+    };
+  }
+
+  Future<void> _loadDevices() async {
     try {
-      final response = await http.get(Uri.parse(apiUrl));
+      final headers = await _getAuthHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/devices'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          _devices = List<Map<String, dynamic>>.from(data['devices'] ?? []);
+          if (_devices.isNotEmpty && _selectedDeviceId == null) {
+            _selectedDeviceId = _devices[0]['device_id'];
+            fetchStats();
+          }
+        });
+      }
+    } catch (e) {
+      print('Error loading devices: $e');
+    }
+  }
+
+  Future<void> fetchStats() async {
+    if (_selectedDeviceId == null) return;
+
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/status'),
+        headers: headers,
+      );
 
       if (response.statusCode == 200) {
         setState(() {
@@ -147,9 +190,39 @@ class _SystemMonitorPageState extends State<SystemMonitorPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('System Monitor'),
+        title: Row(
+          children: [
+            if (_devices.isNotEmpty) ...[
+              const SizedBox(width: 16),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.devices),
+                tooltip: 'Select Device',
+                onSelected: (deviceId) {
+                  setState(() {
+                    _selectedDeviceId = deviceId;
+                    fetchStats();
+                  });
+                },
+                itemBuilder: (context) => _devices.map((device) {
+                  final deviceId = device['device_id'] as String;
+                  final stats = device['stats'];
+                  final osName = stats?['system']?['os_name'] ?? 'Unknown';
+                  return PopupMenuItem<String>(
+                    value: deviceId,
+                    child: Text('$osName (${deviceId.substring(0, 8)}...)'),
+                  );
+                }).toList(),
+              ),
+            ],
+          ],
+        ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh Devices',
+            onPressed: _loadDevices,
+          ),
           IconButton(
             icon: const Icon(Icons.settings_remote),
             tooltip: 'Remote Control',
@@ -157,7 +230,8 @@ class _SystemMonitorPageState extends State<SystemMonitorPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const RemoteControlPage(),
+                  builder: (context) =>
+                      RemoteControlPage(deviceId: _selectedDeviceId),
                 ),
               );
             },
