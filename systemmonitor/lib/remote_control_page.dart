@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'auth_service.dart';
+import 'login_page.dart';
 
 class RemoteControlPage extends StatefulWidget {
   const RemoteControlPage({super.key});
@@ -10,22 +12,83 @@ class RemoteControlPage extends StatefulWidget {
 }
 
 class _RemoteControlPageState extends State<RemoteControlPage> {
-  static const String apiUrl =
-      'https://system-monitor-silk.vercel.app/api/command';
+  static const String baseUrl = 'https://system-monitor-silk.vercel.app/api';
+
+  final AuthService _authService = AuthService();
+  String? _selectedDeviceId;
+  List<Map<String, dynamic>> _devices = [];
+  bool _isLoadingDevices = true;
 
   double _brightnessValue = 50.0;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDevices();
+  }
+
+  Future<Map<String, String>> _getAuthHeaders() async {
+    final token = await _authService.getIdToken();
+    final userId = _authService.userId;
+    final deviceId = _selectedDeviceId ?? 'unknown';
+
+    return {
+      'Content-Type': 'application/json',
+      'X-User-ID': userId ?? '',
+      'X-Device-ID': deviceId,
+      'Authorization': 'Bearer ${token ?? ''}',
+    };
+  }
+
+  Future<void> _loadDevices() async {
+    setState(() => _isLoadingDevices = true);
+
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/devices'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          _devices = List<Map<String, dynamic>>.from(data['devices'] ?? []);
+          if (_devices.isNotEmpty && _selectedDeviceId == null) {
+            _selectedDeviceId = _devices[0]['device_id'];
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading devices: $e')));
+      }
+    } finally {
+      setState(() => _isLoadingDevices = false);
+    }
+  }
 
   Future<void> sendCommand(
     String command, {
     Map<String, dynamic>? params,
   }) async {
+    if (_selectedDeviceId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a device first')),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
+      final headers = await _getAuthHeaders();
       final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse('$baseUrl/command?target_device_id=$_selectedDeviceId'),
+        headers: headers,
         body: json.encode({'command': command, 'params': params ?? {}}),
       );
 
@@ -40,7 +103,7 @@ class _RemoteControlPageState extends State<RemoteControlPage> {
           );
         }
       } else {
-        throw Exception('Failed to send command');
+        throw Exception('Failed to send command: ${response.statusCode}');
       }
     } catch (e) {
       if (mounted) {
@@ -85,14 +148,80 @@ class _RemoteControlPageState extends State<RemoteControlPage> {
       appBar: AppBar(
         title: const Text('Remote Control'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        actions: [
+          // Sign out button
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await _authService.signOut();
+              if (mounted) {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                );
+              }
+            },
+          ),
+        ],
       ),
-      body: _isLoading
+      body: _isLoadingDevices
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Device Selector
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Select Device',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          if (_devices.isEmpty)
+                            const Text('No devices connected')
+                          else
+                            DropdownButtonFormField<String>(
+                              value: _selectedDeviceId,
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                labelText: 'Device',
+                              ),
+                              items: _devices.map((device) {
+                                final deviceId = device['device_id'] as String;
+                                final stats = device['stats'];
+                                final osName =
+                                    stats?['system']?['os_name'] ?? 'Unknown';
+                                return DropdownMenuItem<String>(
+                                  value: deviceId,
+                                  child: Text('$deviceId ($osName)'),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedDeviceId = value;
+                                });
+                              },
+                            ),
+                          const SizedBox(height: 8),
+                          ElevatedButton.icon(
+                            onPressed: _loadDevices,
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Refresh Devices'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
                   // Warning Card
                   Card(
                     color: Colors.orange[100],

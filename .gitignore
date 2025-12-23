@@ -10,6 +10,7 @@ venv/
 
 # Firebase credentials (NEVER COMMIT!)
 firebase-credentials.json
+firebase-service-account.json
 *.json.secret
 
 # Environment variables

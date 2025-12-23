@@ -1,10 +1,40 @@
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+import 'login_page.dart';
 import 'remote_control_page.dart';
 
-void main() {
+// TODO: Replace with your Firebase configuration
+// Get this from Firebase Console > Project Settings > Your apps > Web app
+const firebaseConfig = {
+  'apiKey': 'AIzaSyCfcUxvGb4q9AQRiSLIHAdAH4Kt8zaTUpc',
+  'appId': '1:280248422582:web:5c7f17f949f8990e5a5617',
+  'messagingSenderId': '280248422582',
+  'projectId': 'system-monitor-4dd1f',
+  'authDomain': 'system-monitor-4dd1f.firebaseapp.com',
+  'storageBucket': 'system-monitor-4dd1f.firebasestorage.app',
+};
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase
+  try {
+    await Firebase.initializeApp(
+      options: FirebaseOptions(
+        apiKey: firebaseConfig['apiKey']!,
+        appId: firebaseConfig['appId']!,
+        messagingSenderId: firebaseConfig['messagingSenderId']!,
+        projectId: firebaseConfig['projectId']!,
+      ),
+    );
+  } catch (e) {
+    print('Firebase initialization error: $e');
+  }
+
   runApp(const MyApp());
 }
 
@@ -20,7 +50,23 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const SystemMonitorPage(),
+      // Check authentication state
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          if (snapshot.hasData) {
+            return const RemoteControlPage();
+          }
+
+          return const LoginPage();
+        },
+      ),
     );
   }
 }

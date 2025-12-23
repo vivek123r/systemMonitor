@@ -1,10 +1,14 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, List, Optional, Any
 import time
+from firebase_config import verify_token, get_firestore_db, initialize_firebase
 
 app = FastAPI()
+
+# Initialize Firebase
+initialize_firebase()
 
 app.add_middleware(
     CORSMiddleware,
@@ -16,6 +20,8 @@ app.add_middleware(
 
 # --- DATA MODEL ---
 class SystemStats(BaseModel):
+    device_id: str
+    user_id: str
     cpu: float
     ram: float
     gpu: float
@@ -35,23 +41,54 @@ class RemoteCommand(BaseModel):
     command: str
     params: Optional[Dict[str, Any]] = None
 
-# In-memory storage (The "Mailbox")
-current_stats = {
-    "cpu": 0,
-    "ram": 0,
-    "gpu": 0,
-    "disk": {},
-    "status": "Waiting for Agent..."
-}
+# In-memory storage (The "Mailbox") - Now organized by user_id and device_id
+device_stats = {}  # Format: {user_id: {device_id: {...stats}}}
 
-# Command queue for remote control
-command_queue = []
+# Command queue for remote control - organized by user_id and device_id
+command_queue = {}  # Format: {user_id: {device_id: [commands]}}
+
+# Helper function to verify authentication
+async def verify_auth(
+    x_device_id: Optional[str] = Header(None),
+    x_user_id: Optional[str] = Header(None),
+    authorization: Optional[str] = Header(None)
+):
+    """Verify device authentication"""
+    if not x_device_id or not x_user_id:
+        raise HTTPException(status_code=401, detail="Missing device credentials")
+    
+    # For demo mode, allow demo-user/demo-token
+    if x_user_id == "demo-user" and authorization == "Bearer demo-token":
+        return {"user_id": x_user_id, "device_id": x_device_id}
+    
+    # Verify Firebase token
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid authorization token")
+    
+    token = authorization.split("Bearer ")[1]
+    user_info = verify_token(token)
+    
+    if not user_info:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    # Verify user_id matches token
+    if user_info.get("uid") != x_user_id:
+        raise HTTPException(status_code=403, detail="User ID mismatch")
+    
+    return {"user_id": x_user_id, "device_id": x_device_id}
 
 # --- ENDPOINT 1: RECEIVE DATA (POST) ---
 @app.post("/api/update")
-def update_stats(stats: SystemStats):
-    global current_stats
-    current_stats = {
+async def update_stats(stats: SystemStats, auth_info: dict = Depends(verify_auth)):
+    user_id = auth_info["user_id"]
+    device_id = auth_info["device_id"]
+    
+    # Initialize user storage if needed
+    if user_id not in device_stats:
+        device_stats[user_id] = {}
+    
+    # Store device stats
+    device_stats[user_id][device_id] = {
         "cpu": stats.cpu,
         "ram": stats.ram,
         "gpu": stats.gpu,
@@ -71,14 +108,51 @@ def update_stats(stats: SystemStats):
     
     os_name = stats.system.get('os_name', 'Unknown') if stats.system else 'Unknown'
     battery_info = f" | Battery: {stats.battery['percent']}%" if stats.battery else ""
-    print(f"[API] Update from {os_name}{battery_info} | CPU: {stats.cpu}% | RAM: {stats.ram}%")
+    print(f"[API] Update from {user_id}/{device_id} - {os_name}{battery_info} | CPU: {stats.cpu}% | RAM: {stats.ram}%")
+    
+    # Optionally store in Firebase Firestore
+    try:
+        db = get_firestore_db()
+        if db:
+            db.collection('users').document(user_id).collection('devices').document(device_id).set({
+                'last_update': time.time(),
+                'status': 'Online',
+                'system': stats.system,
+                'battery': stats.battery
+            }, merge=True)
+    except Exception as e:
+        print(f"Warning: Could not update Firestore: {e}")
     
     return {"message": "Data received successfully"}
 
-# --- ENDPOINT 2: SEND DATA (GET) ---
+# --- ENDPOINT 2: SEND DATA (GET) - Get stats for specific device ---
 @app.get("/api/status")
-def get_stats():
-    return current_stats
+async def get_stats(auth_info: dict = Depends(verify_auth)):
+    user_id = auth_info["user_id"]
+    device_id = auth_info["device_id"]
+    
+    if user_id in device_stats and device_id in device_stats[user_id]:
+        return device_stats[user_id][device_id]
+    
+    return {"status": "Waiting for Agent...", "message": "No data available"}
+
+# --- ENDPOINT 2B: Get all devices for a user ---
+@app.get("/api/devices")
+async def get_all_devices(auth_info: dict = Depends(verify_auth)):
+    user_id = auth_info["user_id"]
+    
+    if user_id in device_stats:
+        return {
+            "devices": [
+                {
+                    "device_id": dev_id,
+                    "stats": stats
+                } 
+                for dev_id, stats in device_stats[user_id].items()
+            ]
+        }
+    
+    return {"devices": []}
 
 @app.get("/")
 def root():
@@ -86,8 +160,15 @@ def root():
 
 # --- ENDPOINT 3: SEND REMOTE COMMAND (POST) ---
 @app.post("/api/command")
-def send_command(command: RemoteCommand):
-    global command_queue
+async def send_command(command: RemoteCommand, target_device_id: str, auth_info: dict = Depends(verify_auth)):
+    user_id = auth_info["user_id"]
+    
+    # Initialize command queue for user if needed
+    if user_id not in command_queue:
+        command_queue[user_id] = {}
+    if target_device_id not in command_queue[user_id]:
+        command_queue[user_id][target_device_id] = []
+    
     command_data = {
         "id": int(time.time() * 1000),  # Unique ID
         "command": command.command,
@@ -95,26 +176,39 @@ def send_command(command: RemoteCommand):
         "timestamp": time.time(),
         "status": "pending"
     }
-    command_queue.append(command_data)
-    print(f"[API] Command received: {command.command}")
+    command_queue[user_id][target_device_id].append(command_data)
+    print(f"[API] Command received for {user_id}/{target_device_id}: {command.command}")
     return {"message": "Command queued successfully", "command_id": command_data["id"]}
 
 # --- ENDPOINT 4: GET PENDING COMMANDS (GET) ---
 @app.get("/api/commands")
-def get_commands():
-    global command_queue
-    # Return pending commands and clear the queue
-    pending = [cmd for cmd in command_queue if cmd["status"] == "pending"]
+async def get_commands(auth_info: dict = Depends(verify_auth)):
+    user_id = auth_info["user_id"]
+    device_id = auth_info["device_id"]
+    
+    if user_id not in command_queue or device_id not in command_queue[user_id]:
+        return {"commands": []}
+    
+    # Return pending commands for this device
+    pending = [cmd for cmd in command_queue[user_id][device_id] if cmd["status"] == "pending"]
+    
     # Mark as sent
-    for cmd in command_queue:
+    for cmd in command_queue[user_id][device_id]:
         if cmd["status"] == "pending":
             cmd["status"] = "sent"
+    
     return {"commands": pending}
 
 # --- ENDPOINT 5: ACKNOWLEDGE COMMAND EXECUTION (POST) ---
 @app.post("/api/command/ack/{command_id}")
-def acknowledge_command(command_id: int, success: bool = True):
-    global command_queue
-    command_queue = [cmd for cmd in command_queue if cmd["id"] != command_id]
-    print(f"[API] Command {command_id} acknowledged: {'Success' if success else 'Failed'}")
+async def acknowledge_command(command_id: int, success: bool = True, auth_info: dict = Depends(verify_auth)):
+    user_id = auth_info["user_id"]
+    device_id = auth_info["device_id"]
+    
+    if user_id in command_queue and device_id in command_queue[user_id]:
+        command_queue[user_id][device_id] = [
+            cmd for cmd in command_queue[user_id][device_id] if cmd["id"] != command_id
+        ]
+    
+    print(f"[API] Command {command_id} acknowledged from {user_id}/{device_id}: {'Success' if success else 'Failed'}")
     return {"message": "Command acknowledged"}

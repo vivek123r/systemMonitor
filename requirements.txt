@@ -6,3 +6,5 @@ requests
 gputil
 pillow
 screen-brightness-control
+firebase-admin
+python-dotenv

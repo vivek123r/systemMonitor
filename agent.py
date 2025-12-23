@@ -5,11 +5,25 @@ import GPUtil
 import platform
 import subprocess
 import os
+from dotenv import load_dotenv
+import uuid
+
+# Load environment variables
+load_dotenv()
 
 # ADDRESS of the machine running server.py
 API_URL = "https://system-monitor-silk.vercel.app/api/update"
 COMMAND_URL = "https://system-monitor-silk.vercel.app/api/commands"
 ACK_URL = "https://system-monitor-silk.vercel.app/api/command/ack"
+
+# Device Authentication
+DEVICE_ID = os.getenv("DEVICE_ID") or str(uuid.uuid4())
+USER_ID = os.getenv("USER_ID") or "demo-user"
+DEVICE_TOKEN = os.getenv("DEVICE_TOKEN") or "demo-token"
+
+if not os.getenv("DEVICE_ID"):
+    print("⚠️ WARNING: No DEVICE_ID in .env file. Using temporary ID.")
+    print("⚠️ Please run device_register.py to set up proper authentication.")
 
 def execute_command(command, params):
     """Execute remote commands received from server"""
@@ -103,7 +117,13 @@ def execute_command(command, params):
 def check_for_commands():
     """Check server for pending remote commands"""
     try:
-        response = requests.get(COMMAND_URL, timeout=5)
+        # Include authentication in request
+        headers = {
+            "X-Device-ID": DEVICE_ID,
+            "X-User-ID": USER_ID,
+            "Authorization": f"Bearer {DEVICE_TOKEN}"
+        }
+        response = requests.get(COMMAND_URL, headers=headers, timeout=5)
         if response.status_code == 200:
             data = response.json()
             commands = data.get("commands", [])
@@ -117,7 +137,7 @@ def check_for_commands():
                 success = execute_command(command, params)
                 
                 # Acknowledge command execution
-                requests.post(f"{ACK_URL}/{cmd_id}", params={"success": success}, timeout=5)
+                requests.post(f"{ACK_URL}/{cmd_id}", headers=headers, params={"success": success}, timeout=5)
                 
     except Exception as e:
         pass  # Silently fail if server is unreachable
@@ -327,6 +347,10 @@ def start_agent():
 
             # 9. Prepare Comprehensive Payload
             payload = {
+                # Authentication
+                "device_id": DEVICE_ID,
+                "user_id": USER_ID,
+                
                 # Simple values for backward compatibility
                 "cpu": cpu_usage,
                 "ram": ram_details["usage_percent"],
@@ -346,8 +370,13 @@ def start_agent():
                 "processes": process_details
             }
 
-            # 10. Send to API
-            response = requests.post(API_URL, json=payload, timeout=10)
+            # 10. Send to API with authentication headers
+            headers = {
+                "X-Device-ID": DEVICE_ID,
+                "X-User-ID": USER_ID,
+                "Authorization": f"Bearer {DEVICE_TOKEN}"
+            }
+            response = requests.post(API_URL, json=payload, headers=headers, timeout=10)
 
             if response.status_code == 200:
                 print(f"✓ Sent Data:")
