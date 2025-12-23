@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Any
 import time
 from firebase_config import verify_token, get_firestore_db, initialize_firebase
 
+# System Monitor API - Updated Dec 23, 2025
 app = FastAPI()
 
 # Initialize Firebase
