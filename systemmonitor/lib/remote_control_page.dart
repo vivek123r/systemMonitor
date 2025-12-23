@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'auth_service.dart';
@@ -142,6 +143,10 @@ class _RemoteControlPageState extends State<RemoteControlPage> {
         false;
   }
 
+  Future<void> _copyToClipboard(String text) async {
+    await Clipboard.setData(ClipboardData(text: text));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -149,6 +154,27 @@ class _RemoteControlPageState extends State<RemoteControlPage> {
         title: const Text('Remote Control'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
+          // Copy User ID button
+          IconButton(
+            icon: const Icon(Icons.person),
+            tooltip: 'Copy User ID',
+            onPressed: () async {
+              final userId = _authService.userId;
+              if (userId != null) {
+                // Copy to clipboard
+                await _copyToClipboard(userId);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('User ID copied: $userId'),
+                      backgroundColor: Colors.green,
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
+                }
+              }
+            },
+          ),
           // Sign out button
           IconButton(
             icon: const Icon(Icons.logout),

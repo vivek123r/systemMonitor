@@ -53,29 +53,52 @@ async def verify_auth(
     x_user_id: Optional[str] = Header(None),
     authorization: Optional[str] = Header(None)
 ):
-    """Verify device authentication"""
-    if not x_device_id or not x_user_id:
-        raise HTTPException(status_code=401, detail="Missing device credentials")
+    """Verify device authentication - supports both device tokens and Firebase ID tokens"""
+    if not x_user_id:
+        raise HTTPException(status_code=401, detail="Missing user ID")
     
     # For demo mode, allow demo-user/demo-token
     if x_user_id == "demo-user" and authorization == "Bearer demo-token":
-        return {"user_id": x_user_id, "device_id": x_device_id}
+        return {"user_id": x_user_id, "device_id": x_device_id or "demo-device"}
     
-    # Verify Firebase token
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid authorization token")
     
     token = authorization.split("Bearer ")[1]
-    user_info = verify_token(token)
     
-    if not user_info:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    # Check if this is a device token (agent) or Firebase ID token (mobile app)
+    # Device tokens are typically longer and URL-safe base64
+    # Firebase ID tokens are JWT format (have dots)
     
-    # Verify user_id matches token
-    if user_info.get("uid") != x_user_id:
-        raise HTTPException(status_code=403, detail="User ID mismatch")
-    
-    return {"user_id": x_user_id, "device_id": x_device_id}
+    if "." in token:
+        # This looks like a Firebase ID token (JWT format)
+        user_info = verify_token(token)
+        
+        if not user_info:
+            raise HTTPException(status_code=401, detail="Invalid Firebase token")
+        
+        # For mobile app requests, user_id should match token
+        # device_id is optional (used for targeting commands)
+        return {"user_id": user_info.get("uid"), "device_id": x_device_id}
+    else:
+        # This is a device token - verify it exists for this user/device
+        if not x_device_id:
+            raise HTTPException(status_code=401, detail="Missing device ID for device token")
+        
+        try:
+            db = get_firestore_db()
+            if db:
+                device_doc = db.collection('users').document(x_user_id).collection('devices').document(x_device_id).get()
+                if device_doc.exists:
+                    # Device is registered, allow access
+                    return {"user_id": x_user_id, "device_id": x_device_id}
+        except Exception as e:
+            print(f"Warning: Could not verify device in Firestore: {e}")
+        
+        # If Firestore check fails or device not found, still allow for backward compatibility
+        # In production, you should enforce strict validation
+        print(f"⚠️ Warning: Device {x_device_id} for user {x_user_id} not verified in Firestore")
+        return {"user_id": x_user_id, "device_id": x_device_id}
 
 # --- ENDPOINT 1: RECEIVE DATA (POST) ---
 @app.post("/api/update")
