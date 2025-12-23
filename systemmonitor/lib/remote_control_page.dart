@@ -68,7 +68,9 @@ class _RemoteControlPageState extends State<RemoteControlPage> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: ${response.statusCode} - ${response.body}')),
+            SnackBar(
+              content: Text('Error: ${response.statusCode} - ${response.body}'),
+            ),
           );
         }
       }
