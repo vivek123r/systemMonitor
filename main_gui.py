@@ -480,8 +480,131 @@ class SystemMonitorApp(ctk.CTk):
         self.battery_frame = self.create_metric_card_with_progress(main_container, "🔋", "Battery", "N/A", "#22c55e")
         self.battery_frame.grid(row=3, column=1, sticky="nsew", padx=5, pady=8)
         
+        # Row 4: Remote Control Panel
+        remote_frame = ctk.CTkFrame(main_container, corner_radius=12, fg_color="#161b22", border_width=1, border_color="#30363d")
+        remote_frame.grid(row=4, column=0, columnspan=2, sticky="ew", padx=5, pady=8)
+        
+        # Remote header
+        remote_header = ctk.CTkFrame(remote_frame, fg_color="transparent")
+        remote_header.pack(fill="x", padx=20, pady=(15, 10))
+        ctk.CTkLabel(remote_header, text="🎮", font=("Segoe UI Emoji", 20)).pack(side="left", padx=(0, 10))
+        ctk.CTkLabel(remote_header, text="Remote Control", font=("Segoe UI", 16, "bold"), text_color="#c9d1d9").pack(side="left")
+        ctk.CTkLabel(remote_header, text="Control your PC locally or from mobile app", 
+                    font=("Segoe UI", 10), text_color="#6e7681").pack(side="right")
+        
+        # Power Controls
+        power_section = ctk.CTkFrame(remote_frame, fg_color="#21262d", corner_radius=8)
+        power_section.pack(fill="x", padx=20, pady=8)
+        
+        ctk.CTkLabel(power_section, text="⚡ Power Controls", font=("Segoe UI", 12, "bold"), 
+                    text_color="#8b949e").pack(anchor="w", padx=15, pady=(10, 8))
+        
+        power_btns = ctk.CTkFrame(power_section, fg_color="transparent")
+        power_btns.pack(fill="x", padx=15, pady=(0, 12))
+        
+        ctk.CTkButton(power_btns, text="🔴 Shutdown", width=110, height=35,
+                     fg_color="#da3633", hover_color="#b62324",
+                     command=lambda: self.execute_local_command("shutdown")).pack(side="left", padx=3)
+        ctk.CTkButton(power_btns, text="🔄 Restart", width=110, height=35,
+                     fg_color="#1f6feb", hover_color="#1958c7",
+                     command=lambda: self.execute_local_command("restart")).pack(side="left", padx=3)
+        ctk.CTkButton(power_btns, text="😴 Sleep", width=110, height=35,
+                     fg_color="#8b5cf6", hover_color="#7c3aed",
+                     command=lambda: self.execute_local_command("sleep")).pack(side="left", padx=3)
+        ctk.CTkButton(power_btns, text="👋 Log Off", width=110, height=35,
+                     fg_color="#6e7681", hover_color="#484f58",
+                     command=lambda: self.execute_local_command("logoff")).pack(side="left", padx=3)
+        ctk.CTkButton(power_btns, text="🔒 Lock", width=110, height=35,
+                     fg_color="#238636", hover_color="#1a7f37",
+                     command=lambda: self.execute_local_command("lock")).pack(side="left", padx=3)
+        
+        # Power Profiles
+        profile_section = ctk.CTkFrame(remote_frame, fg_color="#21262d", corner_radius=8)
+        profile_section.pack(fill="x", padx=20, pady=8)
+        
+        ctk.CTkLabel(profile_section, text="🔋 Power Profile", font=("Segoe UI", 12, "bold"), 
+                    text_color="#8b949e").pack(anchor="w", padx=15, pady=(10, 8))
+        
+        profile_btns = ctk.CTkFrame(profile_section, fg_color="transparent")
+        profile_btns.pack(fill="x", padx=15, pady=(0, 12))
+        
+        ctk.CTkButton(profile_btns, text="⚡ High Performance", width=150, height=35,
+                     fg_color="#f97316", hover_color="#ea580c",
+                     command=lambda: self.execute_local_command("power_high")).pack(side="left", padx=3)
+        ctk.CTkButton(profile_btns, text="⚖️ Balanced", width=150, height=35,
+                     fg_color="#3b82f6", hover_color="#2563eb",
+                     command=lambda: self.execute_local_command("power_balanced")).pack(side="left", padx=3)
+        ctk.CTkButton(profile_btns, text="🌿 Power Saver", width=150, height=35,
+                     fg_color="#22c55e", hover_color="#16a34a",
+                     command=lambda: self.execute_local_command("power_saver")).pack(side="left", padx=3)
+        
+        # Brightness Control
+        brightness_section = ctk.CTkFrame(remote_frame, fg_color="#21262d", corner_radius=8)
+        brightness_section.pack(fill="x", padx=20, pady=8)
+        
+        brightness_header = ctk.CTkFrame(brightness_section, fg_color="transparent")
+        brightness_header.pack(fill="x", padx=15, pady=(10, 8))
+        
+        ctk.CTkLabel(brightness_header, text="💡 Brightness", font=("Segoe UI", 12, "bold"), 
+                    text_color="#8b949e").pack(side="left")
+        
+        self.brightness_value = ctk.CTkLabel(brightness_header, text="50%", font=("Segoe UI", 12, "bold"), 
+                    text_color="#fbbf24")
+        self.brightness_value.pack(side="right")
+        
+        self.brightness_slider = ctk.CTkSlider(brightness_section, from_=0, to=100, 
+                                               number_of_steps=20, width=400,
+                                               fg_color="#21262d", progress_color="#fbbf24",
+                                               button_color="#fbbf24", button_hover_color="#f59e0b",
+                                               command=self.on_brightness_change)
+        self.brightness_slider.set(50)
+        self.brightness_slider.pack(padx=15, pady=(0, 12))
+        
+        # Quick Actions
+        actions_section = ctk.CTkFrame(remote_frame, fg_color="#21262d", corner_radius=8)
+        actions_section.pack(fill="x", padx=20, pady=(8, 15))
+        
+        ctk.CTkLabel(actions_section, text="🚀 Quick Actions", font=("Segoe UI", 12, "bold"), 
+                    text_color="#8b949e").pack(anchor="w", padx=15, pady=(10, 8))
+        
+        actions_btns = ctk.CTkFrame(actions_section, fg_color="transparent")
+        actions_btns.pack(fill="x", padx=15, pady=(0, 12))
+        
+        ctk.CTkButton(actions_btns, text="📸 Screenshot", width=120, height=35,
+                     fg_color="#06b6d4", hover_color="#0891b2",
+                     command=lambda: self.execute_local_command("screenshot")).pack(side="left", padx=3)
+        ctk.CTkButton(actions_btns, text="🔇 Mute Volume", width=120, height=35,
+                     fg_color="#6366f1", hover_color="#4f46e5",
+                     command=lambda: self.execute_local_command("mute")).pack(side="left", padx=3)
+        ctk.CTkButton(actions_btns, text="📂 Open Explorer", width=120, height=35,
+                     fg_color="#8b5cf6", hover_color="#7c3aed",
+                     command=lambda: self.execute_local_command("open_explorer")).pack(side="left", padx=3)
+        ctk.CTkButton(actions_btns, text="🌐 Open Browser", width=120, height=35,
+                     fg_color="#ec4899", hover_color="#db2777",
+                     command=lambda: self.execute_local_command("open_browser")).pack(side="left", padx=3)
+        
+        # Row 5: Command Log
+        log_frame = ctk.CTkFrame(main_container, corner_radius=12, fg_color="#161b22", border_width=1, border_color="#30363d")
+        log_frame.grid(row=5, column=0, columnspan=2, sticky="ew", padx=5, pady=8)
+        
+        log_header = ctk.CTkFrame(log_frame, fg_color="transparent")
+        log_header.pack(fill="x", padx=20, pady=(15, 10))
+        ctk.CTkLabel(log_header, text="📋", font=("Segoe UI Emoji", 20)).pack(side="left", padx=(0, 10))
+        ctk.CTkLabel(log_header, text="Command Log", font=("Segoe UI", 16, "bold"), text_color="#c9d1d9").pack(side="left")
+        
+        ctk.CTkButton(log_header, text="Clear", width=60, height=25,
+                     fg_color="#21262d", hover_color="#30363d", text_color="#8b949e",
+                     command=self.clear_command_log).pack(side="right")
+        
+        self.command_log = ctk.CTkTextbox(log_frame, height=100, fg_color="#0d1117", 
+                                          text_color="#8b949e", font=("Consolas", 11),
+                                          border_width=1, border_color="#30363d", corner_radius=8)
+        self.command_log.pack(fill="x", padx=20, pady=(0, 15))
+        self.command_log.insert("1.0", "🚀 System Monitor started...\n")
+        self.command_log.configure(state="disabled")
+        
         # Configure row weights
-        for i in range(4):
+        for i in range(6):
             main_container.grid_rowconfigure(i, weight=1)
     
     def create_card(self, parent, title):
@@ -585,6 +708,143 @@ class SystemMonitorApp(ctk.CTk):
         card.details_label = details_label
         
         return card
+    
+    def execute_local_command(self, command):
+        """Execute a command locally from GUI buttons"""
+        import subprocess
+        
+        self.log_command(f"Executing: {command}")
+        
+        try:
+            if command == "shutdown":
+                response = messagebox.askyesno("Confirm Shutdown", 
+                    "Are you sure you want to shutdown your PC?\n\nThis will close all applications.")
+                if response:
+                    os.system("shutdown /s /t 5")
+                    self.log_command("✅ Shutdown initiated (5 seconds)")
+                else:
+                    self.log_command("❌ Shutdown cancelled")
+                    
+            elif command == "restart":
+                response = messagebox.askyesno("Confirm Restart", 
+                    "Are you sure you want to restart your PC?\n\nThis will close all applications.")
+                if response:
+                    os.system("shutdown /r /t 5")
+                    self.log_command("✅ Restart initiated (5 seconds)")
+                else:
+                    self.log_command("❌ Restart cancelled")
+                    
+            elif command == "sleep":
+                os.system("rundll32.exe powrprof.dll,SetSuspendState 0,1,0")
+                self.log_command("✅ Sleep mode activated")
+                
+            elif command == "logoff":
+                response = messagebox.askyesno("Confirm Log Off", 
+                    "Are you sure you want to log off?\n\nThis will close all applications.")
+                if response:
+                    os.system("shutdown /l")
+                    self.log_command("✅ Logging off...")
+                else:
+                    self.log_command("❌ Log off cancelled")
+                    
+            elif command == "lock":
+                os.system("rundll32.exe user32.dll,LockWorkStation")
+                self.log_command("✅ PC locked")
+                
+            elif command == "power_high":
+                subprocess.run(["powercfg", "/setactive", "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"], 
+                             capture_output=True)
+                self.log_command("✅ Power profile: High Performance")
+                
+            elif command == "power_balanced":
+                subprocess.run(["powercfg", "/setactive", "381b4222-f694-41f0-9685-ff5bb260df2e"],
+                             capture_output=True)
+                self.log_command("✅ Power profile: Balanced")
+                
+            elif command == "power_saver":
+                subprocess.run(["powercfg", "/setactive", "a1841308-3541-4fab-bc81-f71556f20b4a"],
+                             capture_output=True)
+                self.log_command("✅ Power profile: Power Saver")
+                
+            elif command == "screenshot":
+                try:
+                    from PIL import ImageGrab
+                    screenshot = ImageGrab.grab()
+                    filename = f"screenshot_{int(time.time())}.png"
+                    screenshot.save(filename)
+                    self.log_command(f"✅ Screenshot saved: {filename}")
+                    # Open the screenshot
+                    os.startfile(filename)
+                except ImportError:
+                    self.log_command("❌ PIL not installed. Run: pip install pillow")
+                    
+            elif command == "mute":
+                try:
+                    from ctypes import cast, POINTER
+                    from comtypes import CLSCTX_ALL
+                    from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+                    devices = AudioUtilities.GetSpeakers()
+                    interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+                    volume = cast(interface, POINTER(IAudioEndpointVolume))
+                    current_mute = volume.GetMute()
+                    volume.SetMute(not current_mute, None)
+                    status = "Muted" if not current_mute else "Unmuted"
+                    self.log_command(f"✅ Volume {status}")
+                except:
+                    # Fallback method using nircmd or keyboard
+                    try:
+                        import keyboard
+                        keyboard.send('volume_mute')
+                        self.log_command("✅ Volume toggled")
+                    except:
+                        self.log_command("❌ Install pycaw: pip install pycaw")
+                    
+            elif command == "open_explorer":
+                os.startfile("explorer")
+                self.log_command("✅ File Explorer opened")
+                
+            elif command == "open_browser":
+                import webbrowser
+                webbrowser.open("https://google.com")
+                self.log_command("✅ Browser opened")
+                
+            else:
+                self.log_command(f"❓ Unknown command: {command}")
+                
+        except Exception as e:
+            self.log_command(f"❌ Error: {str(e)}")
+    
+    def on_brightness_change(self, value):
+        """Handle brightness slider change"""
+        brightness = int(value)
+        self.brightness_value.configure(text=f"{brightness}%")
+        
+        try:
+            import screen_brightness_control as sbc
+            sbc.set_brightness(brightness)
+            self.log_command(f"💡 Brightness set to {brightness}%")
+        except ImportError:
+            pass  # Silent fail, will show error only when user releases slider
+        except Exception as e:
+            pass
+    
+    def log_command(self, message):
+        """Add a message to the command log"""
+        try:
+            timestamp = time.strftime("%H:%M:%S")
+            self.command_log.configure(state="normal")
+            self.command_log.insert("end", f"[{timestamp}] {message}\n")
+            self.command_log.see("end")
+            self.command_log.configure(state="disabled")
+        except:
+            pass
+    
+    def clear_command_log(self):
+        """Clear the command log"""
+        self.command_log.configure(state="normal")
+        self.command_log.delete("1.0", "end")
+        self.command_log.insert("1.0", "🚀 Log cleared...\n")
+        self.command_log.configure(state="disabled")
     
     def start_monitoring(self):
         """Start the monitoring agent in background thread"""
@@ -858,8 +1118,17 @@ class SystemMonitorApp(ctk.CTk):
                             command = cmd["command"]
                             params = cmd.get("params", {})
                             
+                            # Log to GUI
+                            self.log_command(f"📱 Remote command: {command}")
+                            
                             print(f"🎮 Remote command: {command}")
                             success = execute_command(command, params)
+                            
+                            # Log result
+                            if success:
+                                self.log_command(f"✅ Command executed: {command}")
+                            else:
+                                self.log_command(f"❌ Command failed: {command}")
                             
                             # Acknowledge command execution
                             requests.post(f"{ACK_URL}/{cmd_id}", headers=cmd_headers, 
