@@ -8,3 +8,4 @@ pillow
 screen-brightness-control
 firebase-admin
 python-dotenv
+customtkinter
