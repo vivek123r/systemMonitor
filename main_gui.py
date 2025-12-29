@@ -435,6 +435,7 @@ class SystemMonitorApp(ctk.CTk):
         main_container = ctk.CTkScrollableFrame(self, fg_color="#0d1117")
         main_container.pack(fill="both", expand=True, padx=20, pady=15)
         
+        
         # Grid layout - 2 columns
         main_container.grid_columnconfigure(0, weight=1)
         main_container.grid_columnconfigure(1, weight=1)

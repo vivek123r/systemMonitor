@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
@@ -95,6 +96,7 @@ class _SystemMonitorPageState extends State<SystemMonitorPage> {
   DateTime? _lastUpdate;
   String? _selectedDeviceId;
   List<Map<String, dynamic>> _devices = [];
+  int _currentPageIndex = 0; // 0 = Home, 1 = Remote Control
 
   // Expansion states for collapsible sections
   bool _cpuDetailsExpanded = false;
@@ -186,15 +188,25 @@ class _SystemMonitorPageState extends State<SystemMonitorPage> {
     }
   }
 
+  Future<void> _copyToClipboard(String text) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Copied: ${text.substring(0, 20)}...'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            if (_devices.isNotEmpty) ...[
-              const SizedBox(width: 16),
-              PopupMenuButton<String>(
+        title: _devices.isNotEmpty && _currentPageIndex == 0
+            ? PopupMenuButton<String>(
                 icon: const Icon(Icons.devices),
                 tooltip: 'Select Device',
                 onSelected: (deviceId) {
@@ -212,30 +224,24 @@ class _SystemMonitorPageState extends State<SystemMonitorPage> {
                     child: Text('$osName (${deviceId.substring(0, 8)}...)'),
                   );
                 }).toList(),
-              ),
-            ],
-          ],
-        ),
+              )
+            : null,
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh Devices',
-            onPressed: _loadDevices,
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_remote),
-            tooltip: 'Remote Control',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      RemoteControlPage(deviceId: _selectedDeviceId),
-                ),
-              );
-            },
-          ),
+          if (_currentPageIndex == 0) ...[
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Refresh Devices',
+              onPressed: _loadDevices,
+            ),
+            // Copy Device ID button (on home page)
+            if (_selectedDeviceId != null)
+              IconButton(
+                icon: const Icon(Icons.content_copy),
+                tooltip: 'Copy Device ID',
+                onPressed: () => _copyToClipboard(_selectedDeviceId!),
+              ),
+          ],
           if (_lastUpdate != null)
             Padding(
               padding: const EdgeInsets.all(16.0),
@@ -246,97 +252,131 @@ class _SystemMonitorPageState extends State<SystemMonitorPage> {
                 ),
               ),
             ),
+          // Sign out button
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Sign Out',
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              if (mounted) {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                );
+              }
+            },
+          ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error, color: Colors.red, size: 64),
-                  const SizedBox(height: 16),
-                  Text(_error!, style: const TextStyle(color: Colors.red)),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: fetchStats,
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: fetchStats,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  _buildSystemInfoCard(),
-                  const SizedBox(height: 16),
-                  if (stats['battery'] != null) ...[
-                    _buildBatteryCard(),
-                    const SizedBox(height: 16),
-                  ],
-                  _buildStatusCard(),
-                  const SizedBox(height: 16),
-                  _buildStatCard(
-                    'CPU Usage',
-                    stats['cpu'],
-                    Icons.memory,
-                    Colors.blue,
-                    onTap: stats['cpu_details'] != null
-                        ? () => setState(
-                            () => _cpuDetailsExpanded = !_cpuDetailsExpanded,
-                          )
-                        : null,
-                    isExpanded: _cpuDetailsExpanded,
-                  ),
-                  if (stats['cpu_details'] != null && _cpuDetailsExpanded)
-                    _buildCPUDetails(),
-                  const SizedBox(height: 16),
-                  _buildStatCard(
-                    'RAM Usage',
-                    stats['ram'],
-                    Icons.storage,
-                    Colors.green,
-                    onTap: stats['ram_details'] != null
-                        ? () => setState(
-                            () => _ramDetailsExpanded = !_ramDetailsExpanded,
-                          )
-                        : null,
-                    isExpanded: _ramDetailsExpanded,
-                  ),
-                  if (stats['ram_details'] != null && _ramDetailsExpanded)
-                    _buildRAMDetails(),
-                  const SizedBox(height: 16),
-                  _buildStatCard(
-                    'GPU Usage',
-                    stats['gpu'],
-                    Icons.videocam,
-                    Colors.orange,
-                    onTap: stats['gpu_details'] != null
-                        ? () => setState(
-                            () => _gpuDetailsExpanded = !_gpuDetailsExpanded,
-                          )
-                        : null,
-                    isExpanded: _gpuDetailsExpanded,
-                  ),
-                  if (stats['gpu_details'] != null && _gpuDetailsExpanded)
-                    _buildGPUDetails(),
-                  const SizedBox(height: 16),
-                  _buildDiskCards(),
-                  if (stats['network'] != null) ...[
-                    const SizedBox(height: 16),
-                    _buildNetworkCard(),
-                  ],
-                  if (stats['processes'] != null) ...[
-                    const SizedBox(height: 16),
-                    _buildProcessesCard(),
-                  ],
-                ],
-              ),
-            ),
+      body: _currentPageIndex == 0
+          ? _buildHomePage()
+          : RemoteControlPage(deviceId: _selectedDeviceId),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentPageIndex,
+        onDestinationSelected: (index) {
+          setState(() {
+            _currentPageIndex = index;
+          });
+        },
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.dashboard), label: 'Home'),
+          NavigationDestination(
+            icon: Icon(Icons.settings_remote),
+            label: 'Remote',
+          ),
+        ],
+      ),
     );
+  }
+
+  Widget _buildHomePage() {
+    return _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : _error != null
+        ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error, color: Colors.red, size: 64),
+                const SizedBox(height: 16),
+                Text(_error!, style: const TextStyle(color: Colors.red)),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: fetchStats,
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          )
+        : RefreshIndicator(
+            onRefresh: fetchStats,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _buildSystemInfoCard(),
+                const SizedBox(height: 16),
+                if (stats['battery'] != null) ...[
+                  _buildBatteryCard(),
+                  const SizedBox(height: 16),
+                ],
+                _buildStatusCard(),
+                const SizedBox(height: 16),
+                _buildStatCard(
+                  'CPU Usage',
+                  stats['cpu'],
+                  Icons.memory,
+                  Colors.blue,
+                  onTap: stats['cpu_details'] != null
+                      ? () => setState(
+                          () => _cpuDetailsExpanded = !_cpuDetailsExpanded,
+                        )
+                      : null,
+                  isExpanded: _cpuDetailsExpanded,
+                ),
+                if (stats['cpu_details'] != null && _cpuDetailsExpanded)
+                  _buildCPUDetails(),
+                const SizedBox(height: 16),
+                _buildStatCard(
+                  'RAM Usage',
+                  stats['ram'],
+                  Icons.storage,
+                  Colors.green,
+                  onTap: stats['ram_details'] != null
+                      ? () => setState(
+                          () => _ramDetailsExpanded = !_ramDetailsExpanded,
+                        )
+                      : null,
+                  isExpanded: _ramDetailsExpanded,
+                ),
+                if (stats['ram_details'] != null && _ramDetailsExpanded)
+                  _buildRAMDetails(),
+                const SizedBox(height: 16),
+                _buildStatCard(
+                  'GPU Usage',
+                  stats['gpu'],
+                  Icons.videocam,
+                  Colors.orange,
+                  onTap: stats['gpu_details'] != null
+                      ? () => setState(
+                          () => _gpuDetailsExpanded = !_gpuDetailsExpanded,
+                        )
+                      : null,
+                  isExpanded: _gpuDetailsExpanded,
+                ),
+                if (stats['gpu_details'] != null && _gpuDetailsExpanded)
+                  _buildGPUDetails(),
+                const SizedBox(height: 16),
+                _buildDiskCards(),
+                if (stats['network'] != null) ...[
+                  const SizedBox(height: 16),
+                  _buildNetworkCard(),
+                ],
+                if (stats['processes'] != null) ...[
+                  const SizedBox(height: 16),
+                  _buildProcessesCard(),
+                ],
+              ],
+            ),
+          );
   }
 
   // System Info Card (OS Name, Hostname, Uptime)
