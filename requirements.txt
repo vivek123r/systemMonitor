@@ -9,3 +9,6 @@ screen-brightness-control
 firebase-admin
 python-dotenv
 customtkinter
+flask
+flask-cors
+qrcode[pil]

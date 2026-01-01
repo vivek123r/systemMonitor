@@ -12,9 +12,13 @@ import platform
 import os
 import uuid
 import secrets
+import socket
+import json
 from dotenv import load_dotenv
 from firebase_config import get_firestore_db, initialize_firebase
 import requests
+import qrcode
+from PIL import Image, ImageTk
 
 # Suppress agent.py warnings during import
 import sys
@@ -378,6 +382,11 @@ class SystemMonitorApp(ctk.CTk):
         self.agent_thread = None
         self.agent_running = False
         
+        # Local file server
+        self.local_token = secrets.token_urlsafe(32)
+        self.local_server_url = None
+        self.local_server_thread = None
+        
         # Check registration - show wizard if not registered
         load_dotenv()
         if not os.getenv("DEVICE_ID") or os.getenv("DEVICE_ID") == "":
@@ -385,6 +394,7 @@ class SystemMonitorApp(ctk.CTk):
         else:
             self.setup_main_ui()
             self.start_monitoring()
+            self.start_local_file_server()
     
     def show_registration(self):
         """Show registration window"""
@@ -395,6 +405,7 @@ class SystemMonitorApp(ctk.CTk):
         load_dotenv(override=True)
         self.setup_main_ui()
         self.start_monitoring()
+        self.start_local_file_server()
     
     def setup_main_ui(self):
         """Setup main dashboard UI with modern design"""
@@ -431,10 +442,26 @@ class SystemMonitorApp(ctk.CTk):
                                          text_color="white")
         self.status_label.pack(side="left", padx=(0, 12), pady=6)
         
-        # Main container with scrollable frame
-        main_container = ctk.CTkScrollableFrame(self, fg_color="#0d1117")
-        main_container.pack(fill="both", expand=True, padx=20, pady=15)
+        # Tabview for different sections
+        self.tabview = ctk.CTkTabview(self, fg_color="#0d1117", segmented_button_fg_color="#161b22",
+                                      segmented_button_selected_color="#1f6aa5",
+                                      segmented_button_unselected_color="#21262d")
+        self.tabview.pack(fill="both", expand=True, padx=20, pady=(0, 15))
         
+        # Create tabs
+        self.tab_dashboard = self.tabview.add("📊 Dashboard")
+        self.tab_remote = self.tabview.add("🎮 Remote Control")
+        self.tab_files = self.tabview.add("📁 Files")
+        
+        # Setup each tab
+        self.setup_dashboard_tab()
+        self.setup_remote_tab()
+        self.setup_files_tab()
+    
+    def setup_dashboard_tab(self):
+        """Setup the dashboard tab with system metrics"""
+        main_container = ctk.CTkScrollableFrame(self.tab_dashboard, fg_color="#0d1117")
+        main_container.pack(fill="both", expand=True)
         
         # Grid layout - 2 columns
         main_container.grid_columnconfigure(0, weight=1)
@@ -604,9 +631,311 @@ class SystemMonitorApp(ctk.CTk):
         self.command_log.insert("1.0", "🚀 System Monitor started...\n")
         self.command_log.configure(state="disabled")
         
+        # Row 6: Local File Sharing (QR Code)
+        qr_frame = ctk.CTkFrame(main_container, corner_radius=12, fg_color="#161b22", border_width=1, border_color="#30363d")
+        qr_frame.grid(row=6, column=0, columnspan=2, sticky="ew", padx=5, pady=8)
+        
+        qr_header = ctk.CTkFrame(qr_frame, fg_color="transparent")
+        qr_header.pack(fill="x", padx=20, pady=(15, 10))
+        ctk.CTkLabel(qr_header, text="📱", font=("Segoe UI Emoji", 20)).pack(side="left", padx=(0, 10))
+        ctk.CTkLabel(qr_header, text="Local File Sharing", font=("Segoe UI", 16, "bold"), text_color="#c9d1d9").pack(side="left")
+        
+        qr_content = ctk.CTkFrame(qr_frame, fg_color="transparent")
+        qr_content.pack(fill="both", expand=True, padx=20, pady=(0, 15))
+        
+        # Left side - QR code
+        qr_left = ctk.CTkFrame(qr_content, fg_color="#0d1117", corner_radius=8, border_width=1, border_color="#30363d")
+        qr_left.pack(side="left", padx=(0, 15), pady=5)
+        
+        # Generate QR code
+        try:
+            local_ip = self.get_local_ip()
+            qr_data = json.dumps({
+                "ip": f"{local_ip}:5001",
+                "token": self.local_token
+            })
+            
+            qr = qrcode.QRCode(version=1, box_size=6, border=2)
+            qr.add_data(qr_data)
+            qr.make(fit=True)
+            qr_img = qr.make_image(fill_color="#58a6ff", back_color="#0d1117")
+            
+            # Convert to CTkImage
+            qr_img = qr_img.resize((150, 150))
+            qr_photo = ImageTk.PhotoImage(qr_img)
+            
+            qr_label = ctk.CTkLabel(qr_left, image=qr_photo, text="")
+            qr_label.image = qr_photo  # Keep reference
+            qr_label.pack(padx=15, pady=15)
+            
+        except Exception as e:
+            ctk.CTkLabel(qr_left, text="❌ QR Error", text_color="red").pack(padx=15, pady=15)
+            print(f"QR code error: {e}")
+        
+        # Right side - Instructions
+        qr_right = ctk.CTkFrame(qr_content, fg_color="transparent")
+        qr_right.pack(side="left", fill="both", expand=True, pady=5)
+        
+        ctk.CTkLabel(qr_right, text="📲 Scan with Mobile App", 
+                    font=("Segoe UI", 13, "bold"), text_color="#58a6ff", anchor="w").pack(fill="x")
+        ctk.CTkLabel(qr_right, text="Connect your mobile device to share files over LAN", 
+                    font=("Segoe UI", 10), text_color="#6e7681", anchor="w").pack(fill="x", pady=(2, 10))
+        
+        # Connection info
+        info_box = ctk.CTkFrame(qr_right, fg_color="#0d1117", corner_radius=6, border_width=1, border_color="#30363d")
+        info_box.pack(fill="x", pady=5)
+        
+        ctk.CTkLabel(info_box, text=f"🌐 Server: {self.local_server_url or 'Starting...'}", 
+                    font=("Consolas", 9), text_color="#8b949e", anchor="w").pack(fill="x", padx=12, pady=(8, 2))
+        ctk.CTkLabel(info_box, text=f"🔑 Token: {self.local_token[:16]}...", 
+                    font=("Consolas", 9), text_color="#8b949e", anchor="w").pack(fill="x", padx=12, pady=(2, 8))
+        
+        ctk.CTkLabel(qr_right, text="✓ No internet required • ✓ Fast transfers • ✓ LAN only", 
+                    font=("Segoe UI", 9), text_color="#22c55e", anchor="w").pack(fill="x", pady=(8, 0))
+        
+        # Row 7: Shared Files List
+        files_frame = ctk.CTkFrame(main_container, corner_radius=12, fg_color="#161b22", border_width=1, border_color="#30363d")
+        files_frame.grid(row=7, column=0, columnspan=2, sticky="ew", padx=5, pady=8)
+        
+        files_header = ctk.CTkFrame(files_frame, fg_color="transparent")
+        files_header.pack(fill="x", padx=20, pady=(15, 10))
+        ctk.CTkLabel(files_header, text="📁", font=("Segoe UI Emoji", 20)).pack(side="left", padx=(0, 10))
+        ctk.CTkLabel(files_header, text="Shared Files", font=("Segoe UI", 16, "bold"), text_color="#c9d1d9").pack(side="left")
+        
+        btn_frame = ctk.CTkFrame(files_header, fg_color="transparent")
+        btn_frame.pack(side="right")
+        
+        ctk.CTkButton(btn_frame, text="Open Folder", width=100, height=28,
+                     fg_color="#1f6aa5", hover_color="#144870",
+                     command=self.open_shared_folder).pack(side="left", padx=3)
+        ctk.CTkButton(btn_frame, text="Refresh", width=80, height=28,
+                     fg_color="#21262d", hover_color="#30363d", text_color="#8b949e",
+                     command=self.refresh_file_list).pack(side="left", padx=3)
+        
+        # File list
+        self.file_listbox = ctk.CTkTextbox(files_frame, height=120, fg_color="#0d1117", 
+                                           text_color="#8b949e", font=("Consolas", 10),
+                                           border_width=1, border_color="#30363d", corner_radius=8)
+        self.file_listbox.pack(fill="x", padx=20, pady=(0, 15))
+        self.file_listbox.configure(state="disabled")
+        
+        # Initial file list load
+        self.refresh_file_list()
+        
         # Configure row weights
-        for i in range(6):
+        for i in range(8):
             main_container.grid_rowconfigure(i, weight=1)
+    
+    def setup_remote_tab(self):
+        """Setup the remote control tab"""
+        main_container = ctk.CTkScrollableFrame(self.tab_remote, fg_color="#0d1117")
+        main_container.pack(fill="both", expand=True)
+        
+        # Power Controls
+        power_section = ctk.CTkFrame(main_container, corner_radius=12, fg_color="#161b22", border_width=1, border_color="#30363d")
+        power_section.pack(fill="x", padx=20, pady=(10, 8))
+        
+        ctk.CTkLabel(power_section, text="⚡ Power Controls", font=("Segoe UI", 14, "bold"), 
+                    text_color="#c9d1d9").pack(anchor="w", padx=20, pady=(15, 8))
+        
+        power_btns = ctk.CTkFrame(power_section, fg_color="transparent")
+        power_btns.pack(fill="x", padx=20, pady=(0, 15))
+        
+        ctk.CTkButton(power_btns, text="🔴 Shutdown", width=110, height=35,
+                     fg_color="#da3633", hover_color="#b62324",
+                     command=lambda: self.execute_local_command("shutdown")).pack(side="left", padx=3)
+        ctk.CTkButton(power_btns, text="🔄 Restart", width=110, height=35,
+                     fg_color="#1f6feb", hover_color="#1958c7",
+                     command=lambda: self.execute_local_command("restart")).pack(side="left", padx=3)
+        ctk.CTkButton(power_btns, text="😴 Sleep", width=110, height=35,
+                     fg_color="#8b5cf6", hover_color="#7c3aed",
+                     command=lambda: self.execute_local_command("sleep")).pack(side="left", padx=3)
+        ctk.CTkButton(power_btns, text="👋 Log Off", width=110, height=35,
+                     fg_color="#6e7681", hover_color="#484f58",
+                     command=lambda: self.execute_local_command("logoff")).pack(side="left", padx=3)
+        ctk.CTkButton(power_btns, text="🔒 Lock", width=110, height=35,
+                     fg_color="#238636", hover_color="#1a7f37",
+                     command=lambda: self.execute_local_command("lock")).pack(side="left", padx=3)
+        
+        # Power Profiles
+        profile_section = ctk.CTkFrame(main_container, corner_radius=12, fg_color="#161b22", border_width=1, border_color="#30363d")
+        profile_section.pack(fill="x", padx=20, pady=8)
+        
+        ctk.CTkLabel(profile_section, text="🔋 Power Profile", font=("Segoe UI", 14, "bold"), 
+                    text_color="#c9d1d9").pack(anchor="w", padx=20, pady=(15, 8))
+        
+        profile_btns = ctk.CTkFrame(profile_section, fg_color="transparent")
+        profile_btns.pack(fill="x", padx=20, pady=(0, 15))
+        
+        ctk.CTkButton(profile_btns, text="⚡ High Performance", width=150, height=35,
+                     fg_color="#f97316", hover_color="#ea580c",
+                     command=lambda: self.execute_local_command("power_high")).pack(side="left", padx=3)
+        ctk.CTkButton(profile_btns, text="⚖️ Balanced", width=150, height=35,
+                     fg_color="#3b82f6", hover_color="#2563eb",
+                     command=lambda: self.execute_local_command("power_balanced")).pack(side="left", padx=3)
+        ctk.CTkButton(profile_btns, text="🌿 Power Saver", width=150, height=35,
+                     fg_color="#22c55e", hover_color="#16a34a",
+                     command=lambda: self.execute_local_command("power_saver")).pack(side="left", padx=3)
+        
+        # Brightness Control
+        brightness_section = ctk.CTkFrame(main_container, corner_radius=12, fg_color="#161b22", border_width=1, border_color="#30363d")
+        brightness_section.pack(fill="x", padx=20, pady=8)
+        
+        ctk.CTkLabel(brightness_section, text="💡 Brightness", font=("Segoe UI", 14, "bold"), 
+                    text_color="#c9d1d9").pack(anchor="w", padx=20, pady=(15, 8))
+        
+        brightness_control = ctk.CTkFrame(brightness_section, fg_color="transparent")
+        brightness_control.pack(fill="x", padx=20, pady=(0, 15))
+        
+        self.brightness_value = ctk.CTkLabel(brightness_control, text="50%", font=("Segoe UI", 16, "bold"), 
+                    text_color="#fbbf24")
+        self.brightness_value.pack(pady=(0, 8))
+        
+        self.brightness_slider = ctk.CTkSlider(brightness_control, from_=0, to=100, 
+                                               number_of_steps=20, width=400,
+                                               fg_color="#21262d", progress_color="#fbbf24",
+                                               button_color="#fbbf24", button_hover_color="#f59e0b",
+                                               command=self.on_brightness_change)
+        self.brightness_slider.set(50)
+        self.brightness_slider.pack()
+        
+        # Quick Actions
+        actions_section = ctk.CTkFrame(main_container, corner_radius=12, fg_color="#161b22", border_width=1, border_color="#30363d")
+        actions_section.pack(fill="x", padx=20, pady=8)
+        
+        ctk.CTkLabel(actions_section, text="🚀 Quick Actions", font=("Segoe UI", 14, "bold"), 
+                    text_color="#c9d1d9").pack(anchor="w", padx=20, pady=(15, 8))
+        
+        actions_btns = ctk.CTkFrame(actions_section, fg_color="transparent")
+        actions_btns.pack(fill="x", padx=20, pady=(0, 15))
+        
+        ctk.CTkButton(actions_btns, text="📸 Screenshot", width=120, height=35,
+                     fg_color="#06b6d4", hover_color="#0891b2",
+                     command=lambda: self.execute_local_command("screenshot")).pack(side="left", padx=3)
+        ctk.CTkButton(actions_btns, text="🔇 Mute Volume", width=120, height=35,
+                     fg_color="#6366f1", hover_color="#4f46e5",
+                     command=lambda: self.execute_local_command("mute")).pack(side="left", padx=3)
+        ctk.CTkButton(actions_btns, text="📂 Open Explorer", width=120, height=35,
+                     fg_color="#8b5cf6", hover_color="#7c3aed",
+                     command=lambda: self.execute_local_command("open_explorer")).pack(side="left", padx=3)
+        ctk.CTkButton(actions_btns, text="🌐 Open Browser", width=120, height=35,
+                     fg_color="#ec4899", hover_color="#db2777",
+                     command=lambda: self.execute_local_command("open_browser")).pack(side="left", padx=3)
+        
+        # Command Log
+        log_frame = ctk.CTkFrame(main_container, corner_radius=12, fg_color="#161b22", border_width=1, border_color="#30363d")
+        log_frame.pack(fill="x", padx=20, pady=8)
+        
+        log_header = ctk.CTkFrame(log_frame, fg_color="transparent")
+        log_header.pack(fill="x", padx=20, pady=(15, 10))
+        ctk.CTkLabel(log_header, text="📋", font=("Segoe UI Emoji", 20)).pack(side="left", padx=(0, 10))
+        ctk.CTkLabel(log_header, text="Command Log", font=("Segoe UI", 14, "bold"), text_color="#c9d1d9").pack(side="left")
+        
+        ctk.CTkButton(log_header, text="Clear", width=60, height=25,
+                     fg_color="#21262d", hover_color="#30363d", text_color="#8b949e",
+                     command=self.clear_command_log).pack(side="right")
+        
+        self.command_log = ctk.CTkTextbox(log_frame, height=150, fg_color="#0d1117", 
+                                          text_color="#8b949e", font=("Consolas", 11),
+                                          border_width=1, border_color="#30363d", corner_radius=8)
+        self.command_log.pack(fill="x", padx=20, pady=(0, 15))
+        self.command_log.insert("1.0", "🚀 System Monitor started...\n")
+        self.command_log.configure(state="disabled")
+    
+    def setup_files_tab(self):
+        """Setup the files tab with QR code and file list"""
+        main_container = ctk.CTkScrollableFrame(self.tab_files, fg_color="#0d1117")
+        main_container.pack(fill="both", expand=True)
+        
+        # QR Code Section
+        qr_frame = ctk.CTkFrame(main_container, corner_radius=12, fg_color="#161b22", border_width=1, border_color="#30363d")
+        qr_frame.pack(fill="x", padx=20, pady=(10, 8))
+        
+        qr_header = ctk.CTkFrame(qr_frame, fg_color="transparent")
+        qr_header.pack(fill="x", padx=20, pady=(15, 10))
+        ctk.CTkLabel(qr_header, text="📱", font=("Segoe UI Emoji", 20)).pack(side="left", padx=(0, 10))
+        ctk.CTkLabel(qr_header, text="Connect Mobile App", font=("Segoe UI", 16, "bold"), text_color="#c9d1d9").pack(side="left")
+        
+        qr_content = ctk.CTkFrame(qr_frame, fg_color="transparent")
+        qr_content.pack(fill="both", expand=True, padx=20, pady=(0, 15))
+        
+        # Left side - QR code
+        qr_left = ctk.CTkFrame(qr_content, fg_color="#0d1117", corner_radius=8, border_width=1, border_color="#30363d")
+        qr_left.pack(side="left", padx=(0, 15), pady=5)
+        
+        # Generate QR code
+        try:
+            local_ip = self.get_local_ip()
+            qr_data = json.dumps({
+                "ip": f"{local_ip}:5001",
+                "token": self.local_token
+            })
+            
+            qr_img_pil = qrcode.make(qr_data)
+            qr_img_pil = qr_img_pil.resize((150, 150))
+            
+            # Use CTkImage instead of PhotoImage
+            qr_ctk_image = ctk.CTkImage(light_image=qr_img_pil, dark_image=qr_img_pil, size=(150, 150))
+            
+            qr_label = ctk.CTkLabel(qr_left, image=qr_ctk_image, text="")
+            qr_label.pack(padx=15, pady=15)
+            
+        except Exception as e:
+            ctk.CTkLabel(qr_left, text="❌ QR Error", text_color="red").pack(padx=15, pady=15)
+            print(f"QR code error: {e}")
+        
+        # Right side - Instructions
+        qr_right = ctk.CTkFrame(qr_content, fg_color="transparent")
+        qr_right.pack(side="left", fill="both", expand=True, pady=5)
+        
+        ctk.CTkLabel(qr_right, text="📲 Scan with Mobile App", 
+                    font=("Segoe UI", 13, "bold"), text_color="#58a6ff", anchor="w").pack(fill="x")
+        ctk.CTkLabel(qr_right, text="Connect your mobile device to share files over LAN", 
+                    font=("Segoe UI", 10), text_color="#6e7681", anchor="w").pack(fill="x", pady=(2, 10))
+        
+        # Connection info
+        info_box = ctk.CTkFrame(qr_right, fg_color="#0d1117", corner_radius=6, border_width=1, border_color="#30363d")
+        info_box.pack(fill="x", pady=5)
+        
+        ctk.CTkLabel(info_box, text=f"🌐 Server: {self.local_server_url or 'Starting...'}", 
+                    font=("Consolas", 9), text_color="#8b949e", anchor="w").pack(fill="x", padx=12, pady=(8, 2))
+        ctk.CTkLabel(info_box, text=f"🔑 Token: {self.local_token[:16]}...", 
+                    font=("Consolas", 9), text_color="#8b949e", anchor="w").pack(fill="x", padx=12, pady=(2, 8))
+        
+        ctk.CTkLabel(qr_right, text="✓ No internet required • ✓ Fast transfers • ✓ LAN only", 
+                    font=("Segoe UI", 9), text_color="#22c55e", anchor="w").pack(fill="x", pady=(8, 0))
+        
+        # Shared Files List
+        files_frame = ctk.CTkFrame(main_container, corner_radius=12, fg_color="#161b22", border_width=1, border_color="#30363d")
+        files_frame.pack(fill="both", expand=True, padx=20, pady=8)
+        
+        files_header = ctk.CTkFrame(files_frame, fg_color="transparent")
+        files_header.pack(fill="x", padx=20, pady=(15, 10))
+        ctk.CTkLabel(files_header, text="📁", font=("Segoe UI Emoji", 20)).pack(side="left", padx=(0, 10))
+        ctk.CTkLabel(files_header, text="Shared Files", font=("Segoe UI", 16, "bold"), text_color="#c9d1d9").pack(side="left")
+        
+        btn_frame = ctk.CTkFrame(files_header, fg_color="transparent")
+        btn_frame.pack(side="right")
+        
+        ctk.CTkButton(btn_frame, text="� Send to Phone", width=120, height=28,
+                     fg_color="#22c55e", hover_color="#16a34a",
+                     command=self.send_file_to_phone).pack(side="left", padx=3)
+        ctk.CTkButton(btn_frame, text="�📂 Open Folder", width=110, height=28,
+                     fg_color="#1f6aa5", hover_color="#144870",
+                     command=self.open_shared_folder).pack(side="left", padx=3)
+        ctk.CTkButton(btn_frame, text="🔄 Refresh", width=90, height=28,
+                     fg_color="#21262d", hover_color="#30363d", text_color="#8b949e",
+                     command=self.refresh_file_list).pack(side="left", padx=3)
+        
+        # File list
+        self.file_listbox = ctk.CTkTextbox(files_frame, height=250, fg_color="#0d1117", 
+                                           text_color="#8b949e", font=("Consolas", 10),
+                                           border_width=1, border_color="#30363d", corner_radius=8)
+        self.file_listbox.pack(fill="both", expand=True, padx=20, pady=(0, 15))
+        self.file_listbox.configure(state="disabled")
+        
+        # Initial file list load
+        self.refresh_file_list()
     
     def create_card(self, parent, title):
         """Create a card container"""
@@ -1250,6 +1579,116 @@ class SystemMonitorApp(ctk.CTk):
         
         # Schedule next update
         self.after(1000, self.update_ui_loop)
+    
+    def get_local_ip(self):
+        """Get the local IP address"""
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]
+            s.close()
+            return local_ip
+        except:
+            return "127.0.0.1"
+    
+    def start_local_file_server(self):
+        """Start the local file server in background thread"""
+        try:
+            from local_file_server import start_server
+            
+            local_ip = self.get_local_ip()
+            self.local_server_url = f"http://{local_ip}:5001"
+            
+            # Start server in daemon thread
+            self.local_server_thread = threading.Thread(
+                target=start_server,
+                args=(self.local_token,),
+                daemon=True
+            )
+            self.local_server_thread.start()
+            
+            print(f"Local file server started at {self.local_server_url}")
+            print(f"Local token: {self.local_token}")
+            
+        except Exception as e:
+            print(f"Failed to start local file server: {e}")
+    
+    def open_shared_folder(self):
+        """Open the shared folder in file explorer"""
+        import subprocess
+        folder_path = os.path.join(os.path.expanduser("~"), "SystemMonitorShared")
+        os.makedirs(folder_path, exist_ok=True)
+        subprocess.Popen(f'explorer "{folder_path}"')
+        self.log_command(f"📂 Opened shared folder: {folder_path}")
+    
+    def send_file_to_phone(self):
+        """Select a file and copy it to shared folder for phone to download"""
+        from tkinter import filedialog
+        
+        try:
+            # Open file dialog
+            file_path = filedialog.askopenfilename(
+                title="Select file to send to phone",
+                filetypes=[("All Files", "*.*")]
+            )
+            
+            if file_path:
+                import shutil
+                folder_path = os.path.join(os.path.expanduser("~"), "SystemMonitorShared")
+                os.makedirs(folder_path, exist_ok=True)
+                
+                filename = os.path.basename(file_path)
+                dest_path = os.path.join(folder_path, filename)
+                
+                # Copy file to shared folder
+                shutil.copy2(file_path, dest_path)
+                
+                # Show success message
+                messagebox.showinfo("File Ready", 
+                    f"✅ {filename}\n\nFile is ready to download on your phone!\nGo to the Files tab in the mobile app.")
+                
+                self.log_command(f"📤 Sent to phone: {filename}")
+                self.refresh_file_list()
+                
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to send file: {e}")
+            print(f"Error sending file: {e}")
+    
+    def refresh_file_list(self):
+        """Refresh the list of shared files"""
+        try:
+            folder_path = os.path.join(os.path.expanduser("~"), "SystemMonitorShared")
+            os.makedirs(folder_path, exist_ok=True)
+            
+            files = []
+            for filename in os.listdir(folder_path):
+                filepath = os.path.join(folder_path, filename)
+                if os.path.isfile(filepath):
+                    size = os.path.getsize(filepath)
+                    size_str = self.format_file_size(size)
+                    files.append(f"📄 {filename:<50} {size_str:>15}")
+            
+            self.file_listbox.configure(state="normal")
+            self.file_listbox.delete("1.0", "end")
+            
+            if files:
+                self.file_listbox.insert("1.0", "\n".join(files))
+                self.file_listbox.insert("end", f"\n\n✅ Total files: {len(files)}")
+            else:
+                self.file_listbox.insert("1.0", "📭 No files shared yet.\n\nUpload files from your mobile app!")
+            
+            self.file_listbox.configure(state="disabled")
+            
+        except Exception as e:
+            print(f"Error refreshing file list: {e}")
+    
+    def format_file_size(self, bytes_size):
+        """Format file size in human readable format"""
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if bytes_size < 1024.0:
+                return f"{bytes_size:.1f} {unit}"
+            bytes_size /= 1024.0
+        return f"{bytes_size:.1f} TB"
     
     def on_closing(self):
         """Handle window closing"""

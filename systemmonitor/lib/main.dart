@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'login_page.dart';
 import 'remote_control_page.dart';
+import 'local_file_share.dart';
 
 // TODO: Replace with your Firebase configuration
 // Get this from Firebase Console > Project Settings > Your apps > Web app
@@ -96,7 +97,7 @@ class _SystemMonitorPageState extends State<SystemMonitorPage> {
   DateTime? _lastUpdate;
   String? _selectedDeviceId;
   List<Map<String, dynamic>> _devices = [];
-  int _currentPageIndex = 0; // 0 = Home, 1 = Remote Control
+  int _currentPageIndex = 0; // 0 = Home, 1 = Remote Control, 2 = Files
 
   // Expansion states for collapsible sections
   bool _cpuDetailsExpanded = false;
@@ -269,7 +270,9 @@ class _SystemMonitorPageState extends State<SystemMonitorPage> {
       ),
       body: _currentPageIndex == 0
           ? _buildHomePage()
-          : RemoteControlPage(deviceId: _selectedDeviceId),
+          : _currentPageIndex == 1
+          ? RemoteControlPage(deviceId: _selectedDeviceId)
+          : const LocalFileSharePage(),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentPageIndex,
         onDestinationSelected: (index) {
@@ -282,6 +285,10 @@ class _SystemMonitorPageState extends State<SystemMonitorPage> {
           NavigationDestination(
             icon: Icon(Icons.settings_remote),
             label: 'Remote',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.folder_shared),
+            label: 'Files',
           ),
         ],
       ),
