@@ -424,9 +424,9 @@ class SystemMonitorApp(ctk.CTk):
         title_frame = ctk.CTkFrame(logo_frame, fg_color="transparent")
         title_frame.pack(side="left")
         ctk.CTkLabel(title_frame, text="System Monitor", 
-                    font=("Segoe UI", 24, "bold"), text_color="#58a6ff").pack(anchor="w")
+                    font=("Segoe UI", 28, "bold"), text_color="#58a6ff").pack(anchor="w")
         ctk.CTkLabel(title_frame, text="Real-time PC Monitoring", 
-                    font=("Segoe UI", 11), text_color="#8b949e").pack(anchor="w")
+                    font=("Segoe UI", 15), text_color="#8b949e").pack(anchor="w")
         
         # Status badge
         status_frame = ctk.CTkFrame(header, fg_color="#238636", corner_radius=15)
@@ -434,11 +434,11 @@ class SystemMonitorApp(ctk.CTk):
         
         self.status_indicator = ctk.CTkLabel(status_frame, text="● ", 
                                             text_color="white", 
-                                            font=("Segoe UI", 12))
+                                            font=("Segoe UI", 18))
         self.status_indicator.pack(side="left", padx=(12, 0), pady=6)
         
         self.status_label = ctk.CTkLabel(status_frame, text="Connected", 
-                                         font=("Segoe UI", 11, "bold"),
+                                         font=("Segoe UI", 15, "bold"),
                                          text_color="white")
         self.status_label.pack(side="left", padx=(0, 12), pady=6)
         
@@ -475,7 +475,7 @@ class SystemMonitorApp(ctk.CTk):
         info_header = ctk.CTkFrame(info_frame, fg_color="transparent")
         info_header.pack(fill="x", padx=20, pady=(15, 10))
         ctk.CTkLabel(info_header, text="🖥️", font=("Segoe UI Emoji", 20)).pack(side="left", padx=(0, 10))
-        ctk.CTkLabel(info_header, text="System Information", font=("Segoe UI", 16, "bold"), text_color="#c9d1d9").pack(side="left")
+        ctk.CTkLabel(info_header, text="System Information", font=("Segoe UI", 18, "bold"), text_color="#c9d1d9").pack(side="left")
         
         info_content = ctk.CTkFrame(info_frame, fg_color="transparent")
         info_content.pack(fill="both", expand=True, padx=20, pady=(0, 15))
@@ -516,15 +516,15 @@ class SystemMonitorApp(ctk.CTk):
         remote_header = ctk.CTkFrame(remote_frame, fg_color="transparent")
         remote_header.pack(fill="x", padx=20, pady=(15, 10))
         ctk.CTkLabel(remote_header, text="🎮", font=("Segoe UI Emoji", 20)).pack(side="left", padx=(0, 10))
-        ctk.CTkLabel(remote_header, text="Remote Control", font=("Segoe UI", 16, "bold"), text_color="#c9d1d9").pack(side="left")
+        ctk.CTkLabel(remote_header, text="Remote Control", font=("Segoe UI", 18, "bold"), text_color="#c9d1d9").pack(side="left")
         ctk.CTkLabel(remote_header, text="Control your PC locally or from mobile app", 
-                    font=("Segoe UI", 10), text_color="#6e7681").pack(side="right")
+                    font=("Segoe UI", 18), text_color="#6e7681").pack(side="right")
         
         # Power Controls
         power_section = ctk.CTkFrame(remote_frame, fg_color="#21262d", corner_radius=8)
         power_section.pack(fill="x", padx=20, pady=8)
         
-        ctk.CTkLabel(power_section, text="⚡ Power Controls", font=("Segoe UI", 12, "bold"), 
+        ctk.CTkLabel(power_section, text="⚡ Power Controls", font=("Segoe UI", 18, "bold"), 
                     text_color="#8b949e").pack(anchor="w", padx=15, pady=(10, 8))
         
         power_btns = ctk.CTkFrame(power_section, fg_color="transparent")
@@ -550,7 +550,7 @@ class SystemMonitorApp(ctk.CTk):
         profile_section = ctk.CTkFrame(remote_frame, fg_color="#21262d", corner_radius=8)
         profile_section.pack(fill="x", padx=20, pady=8)
         
-        ctk.CTkLabel(profile_section, text="🔋 Power Profile", font=("Segoe UI", 12, "bold"), 
+        ctk.CTkLabel(profile_section, text="🔋 Power Profile", font=("Segoe UI", 18, "bold"), 
                     text_color="#8b949e").pack(anchor="w", padx=15, pady=(10, 8))
         
         profile_btns = ctk.CTkFrame(profile_section, fg_color="transparent")
@@ -573,10 +573,10 @@ class SystemMonitorApp(ctk.CTk):
         brightness_header = ctk.CTkFrame(brightness_section, fg_color="transparent")
         brightness_header.pack(fill="x", padx=15, pady=(10, 8))
         
-        ctk.CTkLabel(brightness_header, text="💡 Brightness", font=("Segoe UI", 12, "bold"), 
+        ctk.CTkLabel(brightness_header, text="💡 Brightness", font=("Segoe UI", 18, "bold"), 
                     text_color="#8b949e").pack(side="left")
         
-        self.brightness_value = ctk.CTkLabel(brightness_header, text="50%", font=("Segoe UI", 12, "bold"), 
+        self.brightness_value = ctk.CTkLabel(brightness_header, text="50%", font=("Segoe UI", 18, "bold"), 
                     text_color="#fbbf24")
         self.brightness_value.pack(side="right")
         
@@ -592,7 +592,7 @@ class SystemMonitorApp(ctk.CTk):
         actions_section = ctk.CTkFrame(remote_frame, fg_color="#21262d", corner_radius=8)
         actions_section.pack(fill="x", padx=20, pady=(8, 15))
         
-        ctk.CTkLabel(actions_section, text="🚀 Quick Actions", font=("Segoe UI", 12, "bold"), 
+        ctk.CTkLabel(actions_section, text="🚀 Quick Actions", font=("Segoe UI", 18, "bold"), 
                     text_color="#8b949e").pack(anchor="w", padx=15, pady=(10, 8))
         
         actions_btns = ctk.CTkFrame(actions_section, fg_color="transparent")
@@ -618,14 +618,14 @@ class SystemMonitorApp(ctk.CTk):
         log_header = ctk.CTkFrame(log_frame, fg_color="transparent")
         log_header.pack(fill="x", padx=20, pady=(15, 10))
         ctk.CTkLabel(log_header, text="📋", font=("Segoe UI Emoji", 20)).pack(side="left", padx=(0, 10))
-        ctk.CTkLabel(log_header, text="Command Log", font=("Segoe UI", 16, "bold"), text_color="#c9d1d9").pack(side="left")
+        ctk.CTkLabel(log_header, text="Command Log", font=("Segoe UI", 18, "bold"), text_color="#c9d1d9").pack(side="left")
         
         ctk.CTkButton(log_header, text="Clear", width=60, height=25,
                      fg_color="#21262d", hover_color="#30363d", text_color="#8b949e",
                      command=self.clear_command_log).pack(side="right")
         
         self.command_log = ctk.CTkTextbox(log_frame, height=100, fg_color="#0d1117", 
-                                          text_color="#8b949e", font=("Consolas", 11),
+                                          text_color="#8b949e", font=("Consolas", 13),
                                           border_width=1, border_color="#30363d", corner_radius=8)
         self.command_log.pack(fill="x", padx=20, pady=(0, 15))
         self.command_log.insert("1.0", "🚀 System Monitor started...\n")
@@ -638,7 +638,7 @@ class SystemMonitorApp(ctk.CTk):
         qr_header = ctk.CTkFrame(qr_frame, fg_color="transparent")
         qr_header.pack(fill="x", padx=20, pady=(15, 10))
         ctk.CTkLabel(qr_header, text="📱", font=("Segoe UI Emoji", 20)).pack(side="left", padx=(0, 10))
-        ctk.CTkLabel(qr_header, text="Local File Sharing", font=("Segoe UI", 16, "bold"), text_color="#c9d1d9").pack(side="left")
+        ctk.CTkLabel(qr_header, text="Local File Sharing", font=("Segoe UI", 18, "bold"), text_color="#c9d1d9").pack(side="left")
         
         qr_content = ctk.CTkFrame(qr_frame, fg_color="transparent")
         qr_content.pack(fill="both", expand=True, padx=20, pady=(0, 15))
@@ -677,21 +677,21 @@ class SystemMonitorApp(ctk.CTk):
         qr_right.pack(side="left", fill="both", expand=True, pady=5)
         
         ctk.CTkLabel(qr_right, text="📲 Scan with Mobile App", 
-                    font=("Segoe UI", 13, "bold"), text_color="#58a6ff", anchor="w").pack(fill="x")
+                    font=("Segoe UI", 15, "bold"), text_color="#58a6ff", anchor="w").pack(fill="x")
         ctk.CTkLabel(qr_right, text="Connect your mobile device to share files over LAN", 
-                    font=("Segoe UI", 10), text_color="#6e7681", anchor="w").pack(fill="x", pady=(2, 10))
+                    font=("Segoe UI", 18), text_color="#6e7681", anchor="w").pack(fill="x", pady=(2, 10))
         
         # Connection info
         info_box = ctk.CTkFrame(qr_right, fg_color="#0d1117", corner_radius=6, border_width=1, border_color="#30363d")
         info_box.pack(fill="x", pady=5)
         
         ctk.CTkLabel(info_box, text=f"🌐 Server: {self.local_server_url or 'Starting...'}", 
-                    font=("Consolas", 9), text_color="#8b949e", anchor="w").pack(fill="x", padx=12, pady=(8, 2))
+                    font=("Consolas", 13), text_color="#8b949e", anchor="w").pack(fill="x", padx=12, pady=(8, 2))
         ctk.CTkLabel(info_box, text=f"🔑 Token: {self.local_token[:16]}...", 
-                    font=("Consolas", 9), text_color="#8b949e", anchor="w").pack(fill="x", padx=12, pady=(2, 8))
+                    font=("Consolas", 13), text_color="#8b949e", anchor="w").pack(fill="x", padx=12, pady=(2, 8))
         
         ctk.CTkLabel(qr_right, text="✓ No internet required • ✓ Fast transfers • ✓ LAN only", 
-                    font=("Segoe UI", 9), text_color="#22c55e", anchor="w").pack(fill="x", pady=(8, 0))
+                    font=("Segoe UI", 15), text_color="#22c55e", anchor="w").pack(fill="x", pady=(8, 0))
         
         # Row 7: Shared Files List
         files_frame = ctk.CTkFrame(main_container, corner_radius=12, fg_color="#161b22", border_width=1, border_color="#30363d")
@@ -700,7 +700,7 @@ class SystemMonitorApp(ctk.CTk):
         files_header = ctk.CTkFrame(files_frame, fg_color="transparent")
         files_header.pack(fill="x", padx=20, pady=(15, 10))
         ctk.CTkLabel(files_header, text="📁", font=("Segoe UI Emoji", 20)).pack(side="left", padx=(0, 10))
-        ctk.CTkLabel(files_header, text="Shared Files", font=("Segoe UI", 16, "bold"), text_color="#c9d1d9").pack(side="left")
+        ctk.CTkLabel(files_header, text="Shared Files", font=("Segoe UI", 18, "bold"), text_color="#c9d1d9").pack(side="left")
         
         btn_frame = ctk.CTkFrame(files_header, fg_color="transparent")
         btn_frame.pack(side="right")
@@ -714,7 +714,7 @@ class SystemMonitorApp(ctk.CTk):
         
         # File list
         self.file_listbox = ctk.CTkTextbox(files_frame, height=120, fg_color="#0d1117", 
-                                           text_color="#8b949e", font=("Consolas", 10),
+                                           text_color="#8b949e", font=("Consolas", 12),
                                            border_width=1, border_color="#30363d", corner_radius=8)
         self.file_listbox.pack(fill="x", padx=20, pady=(0, 15))
         self.file_listbox.configure(state="disabled")
@@ -735,7 +735,7 @@ class SystemMonitorApp(ctk.CTk):
         power_section = ctk.CTkFrame(main_container, corner_radius=12, fg_color="#161b22", border_width=1, border_color="#30363d")
         power_section.pack(fill="x", padx=20, pady=(10, 8))
         
-        ctk.CTkLabel(power_section, text="⚡ Power Controls", font=("Segoe UI", 14, "bold"), 
+        ctk.CTkLabel(power_section, text="⚡ Power Controls", font=("Segoe UI", 18, "bold"), 
                     text_color="#c9d1d9").pack(anchor="w", padx=20, pady=(15, 8))
         
         power_btns = ctk.CTkFrame(power_section, fg_color="transparent")
@@ -761,7 +761,7 @@ class SystemMonitorApp(ctk.CTk):
         profile_section = ctk.CTkFrame(main_container, corner_radius=12, fg_color="#161b22", border_width=1, border_color="#30363d")
         profile_section.pack(fill="x", padx=20, pady=8)
         
-        ctk.CTkLabel(profile_section, text="🔋 Power Profile", font=("Segoe UI", 14, "bold"), 
+        ctk.CTkLabel(profile_section, text="🔋 Power Profile", font=("Segoe UI", 18, "bold"), 
                     text_color="#c9d1d9").pack(anchor="w", padx=20, pady=(15, 8))
         
         profile_btns = ctk.CTkFrame(profile_section, fg_color="transparent")
@@ -781,13 +781,13 @@ class SystemMonitorApp(ctk.CTk):
         brightness_section = ctk.CTkFrame(main_container, corner_radius=12, fg_color="#161b22", border_width=1, border_color="#30363d")
         brightness_section.pack(fill="x", padx=20, pady=8)
         
-        ctk.CTkLabel(brightness_section, text="💡 Brightness", font=("Segoe UI", 14, "bold"), 
+        ctk.CTkLabel(brightness_section, text="💡 Brightness", font=("Segoe UI", 18, "bold"), 
                     text_color="#c9d1d9").pack(anchor="w", padx=20, pady=(15, 8))
         
         brightness_control = ctk.CTkFrame(brightness_section, fg_color="transparent")
         brightness_control.pack(fill="x", padx=20, pady=(0, 15))
         
-        self.brightness_value = ctk.CTkLabel(brightness_control, text="50%", font=("Segoe UI", 16, "bold"), 
+        self.brightness_value = ctk.CTkLabel(brightness_control, text="50%", font=("Segoe UI", 18, "bold"), 
                     text_color="#fbbf24")
         self.brightness_value.pack(pady=(0, 8))
         
@@ -803,7 +803,7 @@ class SystemMonitorApp(ctk.CTk):
         actions_section = ctk.CTkFrame(main_container, corner_radius=12, fg_color="#161b22", border_width=1, border_color="#30363d")
         actions_section.pack(fill="x", padx=20, pady=8)
         
-        ctk.CTkLabel(actions_section, text="🚀 Quick Actions", font=("Segoe UI", 14, "bold"), 
+        ctk.CTkLabel(actions_section, text="🚀 Quick Actions", font=("Segoe UI", 18, "bold"), 
                     text_color="#c9d1d9").pack(anchor="w", padx=20, pady=(15, 8))
         
         actions_btns = ctk.CTkFrame(actions_section, fg_color="transparent")
@@ -829,14 +829,14 @@ class SystemMonitorApp(ctk.CTk):
         log_header = ctk.CTkFrame(log_frame, fg_color="transparent")
         log_header.pack(fill="x", padx=20, pady=(15, 10))
         ctk.CTkLabel(log_header, text="📋", font=("Segoe UI Emoji", 20)).pack(side="left", padx=(0, 10))
-        ctk.CTkLabel(log_header, text="Command Log", font=("Segoe UI", 14, "bold"), text_color="#c9d1d9").pack(side="left")
+        ctk.CTkLabel(log_header, text="Command Log", font=("Segoe UI", 18, "bold"), text_color="#c9d1d9").pack(side="left")
         
         ctk.CTkButton(log_header, text="Clear", width=60, height=25,
                      fg_color="#21262d", hover_color="#30363d", text_color="#8b949e",
                      command=self.clear_command_log).pack(side="right")
         
         self.command_log = ctk.CTkTextbox(log_frame, height=150, fg_color="#0d1117", 
-                                          text_color="#8b949e", font=("Consolas", 11),
+                                          text_color="#8b949e", font=("Consolas", 13),
                                           border_width=1, border_color="#30363d", corner_radius=8)
         self.command_log.pack(fill="x", padx=20, pady=(0, 15))
         self.command_log.insert("1.0", "🚀 System Monitor started...\n")
@@ -854,7 +854,7 @@ class SystemMonitorApp(ctk.CTk):
         qr_header = ctk.CTkFrame(qr_frame, fg_color="transparent")
         qr_header.pack(fill="x", padx=20, pady=(15, 10))
         ctk.CTkLabel(qr_header, text="📱", font=("Segoe UI Emoji", 20)).pack(side="left", padx=(0, 10))
-        ctk.CTkLabel(qr_header, text="Connect Mobile App", font=("Segoe UI", 16, "bold"), text_color="#c9d1d9").pack(side="left")
+        ctk.CTkLabel(qr_header, text="Connect Mobile App", font=("Segoe UI", 18, "bold"), text_color="#c9d1d9").pack(side="left")
         
         qr_content = ctk.CTkFrame(qr_frame, fg_color="transparent")
         qr_content.pack(fill="both", expand=True, padx=20, pady=(0, 15))
@@ -889,21 +889,21 @@ class SystemMonitorApp(ctk.CTk):
         qr_right.pack(side="left", fill="both", expand=True, pady=5)
         
         ctk.CTkLabel(qr_right, text="📲 Scan with Mobile App", 
-                    font=("Segoe UI", 13, "bold"), text_color="#58a6ff", anchor="w").pack(fill="x")
+                    font=("Segoe UI", 15, "bold"), text_color="#58a6ff", anchor="w").pack(fill="x")
         ctk.CTkLabel(qr_right, text="Connect your mobile device to share files over LAN", 
-                    font=("Segoe UI", 10), text_color="#6e7681", anchor="w").pack(fill="x", pady=(2, 10))
+                    font=("Segoe UI", 18), text_color="#6e7681", anchor="w").pack(fill="x", pady=(2, 10))
         
         # Connection info
         info_box = ctk.CTkFrame(qr_right, fg_color="#0d1117", corner_radius=6, border_width=1, border_color="#30363d")
         info_box.pack(fill="x", pady=5)
         
         ctk.CTkLabel(info_box, text=f"🌐 Server: {self.local_server_url or 'Starting...'}", 
-                    font=("Consolas", 9), text_color="#8b949e", anchor="w").pack(fill="x", padx=12, pady=(8, 2))
+                    font=("Consolas", 13), text_color="#8b949e", anchor="w").pack(fill="x", padx=12, pady=(8, 2))
         ctk.CTkLabel(info_box, text=f"🔑 Token: {self.local_token[:16]}...", 
-                    font=("Consolas", 9), text_color="#8b949e", anchor="w").pack(fill="x", padx=12, pady=(2, 8))
+                    font=("Consolas", 13), text_color="#8b949e", anchor="w").pack(fill="x", padx=12, pady=(2, 8))
         
         ctk.CTkLabel(qr_right, text="✓ No internet required • ✓ Fast transfers • ✓ LAN only", 
-                    font=("Segoe UI", 9), text_color="#22c55e", anchor="w").pack(fill="x", pady=(8, 0))
+                    font=("Segoe UI", 15), text_color="#22c55e", anchor="w").pack(fill="x", pady=(8, 0))
         
         # Shared Files List
         files_frame = ctk.CTkFrame(main_container, corner_radius=12, fg_color="#161b22", border_width=1, border_color="#30363d")
@@ -912,7 +912,7 @@ class SystemMonitorApp(ctk.CTk):
         files_header = ctk.CTkFrame(files_frame, fg_color="transparent")
         files_header.pack(fill="x", padx=20, pady=(15, 10))
         ctk.CTkLabel(files_header, text="📁", font=("Segoe UI Emoji", 20)).pack(side="left", padx=(0, 10))
-        ctk.CTkLabel(files_header, text="Shared Files", font=("Segoe UI", 16, "bold"), text_color="#c9d1d9").pack(side="left")
+        ctk.CTkLabel(files_header, text="Shared Files", font=("Segoe UI", 18, "bold"), text_color="#c9d1d9").pack(side="left")
         
         btn_frame = ctk.CTkFrame(files_header, fg_color="transparent")
         btn_frame.pack(side="right")
@@ -929,7 +929,7 @@ class SystemMonitorApp(ctk.CTk):
         
         # File list
         self.file_listbox = ctk.CTkTextbox(files_frame, height=250, fg_color="#0d1117", 
-                                           text_color="#8b949e", font=("Consolas", 10),
+                                           text_color="#8b949e", font=("Consolas", 12),
                                            border_width=1, border_color="#30363d", corner_radius=8)
         self.file_listbox.pack(fill="both", expand=True, padx=20, pady=(0, 15))
         self.file_listbox.configure(state="disabled")
@@ -942,7 +942,7 @@ class SystemMonitorApp(ctk.CTk):
         card = ctk.CTkFrame(parent, corner_radius=12, fg_color="#161b22", border_width=1, border_color="#30363d")
         
         title_label = ctk.CTkLabel(card, text=title, 
-                                   font=("Segoe UI", 16, "bold"),
+                                   font=("Segoe UI", 18, "bold"),
                                    text_color="#c9d1d9",
                                    anchor="w")
         title_label.pack(fill="x", padx=15, pady=(15, 5))
@@ -955,12 +955,12 @@ class SystemMonitorApp(ctk.CTk):
         row.pack(fill="x", pady=4)
         
         ctk.CTkLabel(row, text=label, 
-                    font=("Segoe UI", 11),
+                    font=("Segoe UI", 15),
                     text_color="#8b949e",
                     anchor="w").pack(side="left", padx=12, pady=8)
         
         value_label = ctk.CTkLabel(row, text=value, 
-                                   font=("Segoe UI", 11, "bold"),
+                                   font=("Segoe UI", 15, "bold"),
                                    text_color="#c9d1d9",
                                    anchor="e")
         value_label.pack(side="right", padx=12, pady=8)
@@ -976,7 +976,7 @@ class SystemMonitorApp(ctk.CTk):
         header_frame.pack(fill="x", padx=20, pady=(18, 5))
         
         ctk.CTkLabel(header_frame, text=icon, font=("Segoe UI Emoji", 24)).pack(side="left", padx=(0, 10))
-        ctk.CTkLabel(header_frame, text=title, font=("Segoe UI", 14, "bold"), text_color="#8b949e").pack(side="left")
+        ctk.CTkLabel(header_frame, text=title, font=("Segoe UI", 18, "bold"), text_color="#8b949e").pack(side="left")
         
         # Large value display
         value_label = ctk.CTkLabel(card, text=initial_value, 
@@ -992,7 +992,7 @@ class SystemMonitorApp(ctk.CTk):
         
         # Details label
         details_label = ctk.CTkLabel(card, text="Loading...", 
-                                     font=("Segoe UI", 10),
+                                     font=("Segoe UI", 18),
                                      text_color="#6e7681")
         details_label.pack(fill="x", padx=20, pady=(0, 18))
         
@@ -1018,7 +1018,7 @@ class SystemMonitorApp(ctk.CTk):
         card = ctk.CTkFrame(parent, corner_radius=12, fg_color="#161b22", border_width=1, border_color="#30363d")
         
         title_label = ctk.CTkLabel(card, text=title, 
-                                   font=("Segoe UI", 14, "bold"),
+                                   font=("Segoe UI", 18, "bold"),
                                    text_color="#8b949e",
                                    anchor="w")
         title_label.pack(fill="x", padx=20, pady=(20, 10))
@@ -1029,7 +1029,7 @@ class SystemMonitorApp(ctk.CTk):
         value_label.pack(expand=True, pady=20)
         
         details_label = ctk.CTkLabel(card, text="", 
-                                     font=("Segoe UI", 10),
+                                     font=("Segoe UI", 18),
                                      text_color="#6e7681")
         details_label.pack(fill="x", padx=20, pady=(0, 15))
         
